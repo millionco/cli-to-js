@@ -1,0 +1,58 @@
+{
+  "name": "cli-to-js",
+  "version": "0.0.0",
+  "description": "Turn any CLI tool into a Node.js API. Reverse commander.",
+  "keywords": [
+    "api",
+    "child-process",
+    "cli",
+    "commander",
+    "shell",
+    "spawn",
+    "wrapper"
+  ],
+  "homepage": "https://github.com/aidenybai/cli-to-js",
+  "bugs": {
+    "url": "https://github.com/aidenybai/cli-to-js/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Aiden Bai",
+    "email": "aiden@million.dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aidenybai/cli-to-js.git"
+  },
+  "bin": {
+    "cli-to-js": "./dist/cli.mjs"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vp test run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "commander": "^14.0.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,7 @@
+export const HELP_TIMEOUT_MS = 10_000;
+export const COMMAND_TIMEOUT_MS = 30_000;
+export const DESCRIPTION_CONTINUATION_INDENT_MIN = 6;
+export const COLUMN_SEPARATOR_MIN_SPACES = 2;
+export const SHORT_FLAG_MAX_LENGTH = 1;
+export const DEFAULT_FAILURE_EXIT_CODE = 1;
+export const MAX_SUGGESTION_DISTANCE = 3;
