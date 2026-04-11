@@ -9,12 +9,23 @@ import { convertCliToJs } from "cli-to-js";
 
 const git = await convertCliToJs("git");
 
+// git commit --message "initial commit" --all
 await git.commit({ message: "initial commit", all: true });
+
+// git push --force
 await git.push({ force: true });
-await git.log({ oneline: true, _: ["main..HEAD"] });
+
+// git log --oneline main..HEAD
+const { stdout } = await git.log({ oneline: true, _: ["main..HEAD"] });
+const commits = stdout.trim().split("\n");
+
+const docker = await convertCliToJs("docker");
+
+// docker build --tag my-app:latest --file Dockerfile .
+await docker.build({ tag: `my-app:${commits[0].slice(0, 7)}`, file: "Dockerfile", _: ["."] });
 ```
 
-No manual wrappers. No codegen step. No config. One function call turns `git`, `docker`, `kubectl`, `ffmpeg` — anything with `--help` — into a typed, callable API.
+No manual wrappers. No codegen step. No config. One function call turns `git`, `docker`, `kubectl`, `ffmpeg` — anything with `--help` — into a typed, callable API. Compose them together with plain JavaScript.
 
 **Built for AI agents.** Agents call CLIs dynamically but hallucinate flag names and forget required args. `$validate` catches mistakes before spawning a process, with did-you-mean suggestions an agent can self-correct from. `$spawn` returns a standard async iterator, so piping and streaming is just a `for await` loop — the most in-distribution JS pattern for any model.
 
