@@ -27,13 +27,13 @@ for (const file of changedFiles) {
 }
 ```
 
-**Why this matters for AI agents.**
+**Why this matters for agents.**
 
-LLM-powered agents need to call CLI tools, but they work best with structured APIs, not raw shell strings.
+Agents need to call CLI tools, but they work best with structured APIs, not raw shell strings.
 
 `cli-to-js` lets an agent introspect any binary on the system, get a typed interface, and call it safely. `$validate` catches hallucinated flag names before spawning a process and returns did-you-mean suggestions the agent can self-correct from in a single retry.
 
-`$spawn` returns a standard async iterator, so streaming and piping is just a `for await` loop, the most common JS pattern in any model's training data.
+`$spawn` returns a standard async iterator, so streaming and piping is just a `for await` loop.
 
 ## Install
 
