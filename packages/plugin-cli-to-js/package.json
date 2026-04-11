@@ -1,0 +1,57 @@
+{
+  "name": "@cli-to-js/plugin-executor",
+  "version": "0.0.1",
+  "description": "Executor plugin that exposes CLI tools wrapped by cli-to-js as invocable executor tools.",
+  "keywords": [
+    "cli",
+    "cli-to-js",
+    "executor",
+    "mcp",
+    "plugin",
+    "tools",
+    "wrapper"
+  ],
+  "homepage": "https://github.com/aidenybai/cli-to-js",
+  "bugs": {
+    "url": "https://github.com/aidenybai/cli-to-js/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Aiden Bai",
+    "email": "aiden@million.dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aidenybai/cli-to-js.git",
+    "directory": "packages/plugin-cli-to-js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vp test run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@executor-js/sdk": "0.0.1-beta.2",
+    "cli-to-js": "workspace:*"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
