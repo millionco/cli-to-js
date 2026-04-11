@@ -60,17 +60,15 @@ console.log(result.exitCode);
 
 Here's how JS option keys map to CLI flags:
 
-
 | JS option                 | CLI output                |
 | ------------------------- | ------------------------- |
 | `{ verbose: true }`       | `--verbose`               |
-| `{ verbose: false }`      | *(omitted)*               |
+| `{ verbose: false }`      | _(omitted)_               |
 | `{ output: "file.txt" }`  | `--output file.txt`       |
 | `{ dryRun: true }`        | `--dry-run`               |
 | `{ v: true }`             | `-v`                      |
 | `{ include: ["a", "b"] }` | `--include a --include b` |
 | `{ _: ["file.txt"] }`     | `file.txt`                |
-
 
 ## TypeScript
 
@@ -299,7 +297,6 @@ The generated code is **standalone**. It embeds a tiny runtime (spawn + options-
 
 Runs `--help`, parses the output, returns the API proxy. Accepts an optional generic `T` for per-subcommand option types.
 
-
 | Option        | Type         | Default    | Description                                |
 | ------------- | ------------ | ---------- | ------------------------------------------ |
 | `helpFlag`    | `string`     | `"--help"` | Flag to get help text                      |
@@ -308,7 +305,6 @@ Runs `--help`, parses the output, returns the API proxy. Accepts an optional gen
 | `env`         | `ProcessEnv` | -          | Default environment for all commands       |
 | `subcommands` | `boolean`    | `false`    | Parse all subcommand help texts eagerly    |
 
-
 ### `fromHelpText<T>(binary, helpText, options?)`
 
 Same as `convertCliToJs` but from a static help text string. Accepts `cwd` and `env` options.
@@ -316,7 +312,6 @@ Same as `convertCliToJs` but from a static help text string. Accepts `cwd` and `
 ### API proxy (`CliApi<T>`)
 
 The returned proxy is both callable and has subcommand methods:
-
 
 | Access                       | Description                              |
 | ---------------------------- | ---------------------------------------- |
@@ -333,7 +328,6 @@ The returned proxy is both callable and has subcommand methods:
 | `api.$spawn.sub(opts)`       | Spawn subcommand, get `CommandProcess`   |
 | `api.$parse("sub")`          | Lazily parse a subcommand's help text    |
 | `api.$parse()`               | Parse all subcommand help texts          |
-
 
 ### `RunConfig`
 

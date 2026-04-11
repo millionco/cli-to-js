@@ -2,6 +2,7 @@ import { describe, it, expect } from "vite-plus/test";
 import { fromHelpText } from "../src/index.js";
 import { parseHelpText } from "../src/parse-help-text.js";
 import { generate } from "../src/generate.js";
+import { buildApi } from "../src/build-api.js";
 
 const REACT_GRAB_HELP = `Usage: grab [options] [command]
 
@@ -283,5 +284,60 @@ describe("react-doctor", () => {
       expect(api.$schema.command.subcommands.length).toBe(2);
       expect(api.$schema.command.flags.length).toBeGreaterThan(10);
     });
+  });
+});
+
+describe("claude (live CLI)", () => {
+  it("parses claude --help into a schema with flags and subcommands", async () => {
+    const { convertCliToJs } = await import("../src/index.js");
+    const claude = await convertCliToJs("claude");
+    const schema = claude.$schema;
+
+    expect(schema.binaryName).toBe("claude");
+    expect(schema.command.description).toContain("Claude Code");
+
+    const flagNames = schema.command.flags.map((flag) => flag.longName);
+    expect(flagNames).toContain("model");
+    expect(flagNames).toContain("print");
+    expect(flagNames).toContain("verbose");
+    expect(flagNames).not.toContain("help");
+    expect(flagNames).not.toContain("version");
+
+    const modelFlag = schema.command.flags.find((flag) => flag.longName === "model");
+    expect(modelFlag!.takesValue).toBe(true);
+
+    const subcommandNames = schema.command.subcommands.map((subcmd) => subcmd.name);
+    expect(subcommandNames).toContain("auth");
+    expect(subcommandNames).toContain("doctor");
+    expect(subcommandNames).toContain("mcp");
+  });
+
+  it("$validate catches typos with did-you-mean", async () => {
+    const { convertCliToJs } = await import("../src/index.js");
+    const claude = await convertCliToJs("claude");
+
+    const errors = claude.$validate({ modle: "sonnet", prnt: true });
+    expect(errors.length).toBeGreaterThanOrEqual(1);
+    const modelError = errors.find((error) => error.name === "modle");
+    expect(modelError!.kind).toBe("unknown-flag");
+    expect(modelError!.suggestion).toBe("model");
+  });
+
+  it("$validate passes with correct options", async () => {
+    const { convertCliToJs } = await import("../src/index.js");
+    const claude = await convertCliToJs("claude");
+
+    const errors = claude.$validate({ print: true, model: "sonnet" });
+    expect(errors).toEqual([]);
+  });
+
+  it("$command produces correct shell strings", async () => {
+    const { convertCliToJs } = await import("../src/index.js");
+    const claude = await convertCliToJs("claude");
+
+    const commandString = claude.$command({ print: true, model: "sonnet", _: ["hello"] });
+    expect(commandString).toBe("claude --print --model sonnet hello");
+    expect(claude.$command.doctor()).toBe("claude doctor");
+    expect(claude.$command.auth()).toBe("claude auth");
   });
 });
