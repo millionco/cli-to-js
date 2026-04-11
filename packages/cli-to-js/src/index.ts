@@ -37,12 +37,13 @@ export { runCommand, spawnCommand } from "./exec.js";
 export { selectHelpOutput } from "./utils/best-help-text.js";
 export { toCommandString } from "./utils/to-command-string.js";
 export { script } from "./utils/script.js";
+export { text, lines, json } from "./utils/parse-output.js";
 export { loadSchema } from "./load-schema.js";
 export { parseSubcommandHelp, enrichSubcommands } from "./parse-subcommands.js";
 export { generate, generateTypes } from "./generate.js";
 export { validateOptions } from "./validate.js";
 export type { ValidationError } from "./validate.js";
-export type { CliApi, CliApiBase, SubcommandFn, SpawnFn } from "./cli-api.js";
+export type { CliApi, CliApiBase, SubcommandFn, SpawnFn, CommandPromise } from "./cli-api.js";
 export type {
   CliSchema,
   ParsedCommand,

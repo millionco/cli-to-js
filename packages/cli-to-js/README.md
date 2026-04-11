@@ -163,6 +163,55 @@ import { validateOptions } from "cli-to-js";
 const errors = validateOptions(schema.command, { verbose: "wrong" });
 ```
 
+## Output parsing
+
+Every command returns a `CommandPromise` with `.text()`, `.lines()`, and `.json()` for typed output:
+
+```ts
+const branch = await git.branch({ showCurrent: true }).text();
+// "main"
+
+const files = await git.diff({ nameOnly: true, _: ["HEAD~1"] }).lines();
+// ["src/index.ts", "src/utils.ts"]
+
+const packages = await npm.outdated({ json: true }).json<Record<string, { current: string }>>();
+// { "lodash": { current: "4.17.20" }, ... }
+```
+
+You can also use the raw `CommandResult` directly:
+
+```ts
+const result = await git.status();
+result.stdout   // raw string
+result.exitCode // number
+```
+
+## Command strings
+
+`$command` returns the shell string instead of executing:
+
+```ts
+git.$command.commit({ message: "fix", all: true })
+// "git commit --message fix --all"
+
+git.$command.push({ force: true })
+// "git push --force"
+```
+
+Compose multiple commands into a runnable script with `script()`:
+
+```ts
+import { script } from "cli-to-js";
+
+const deploy = script(
+  git.$command.commit({ message: "deploy", all: true }),
+  git.$command.push(),
+);
+
+deploy.run();              // executes sequentially, stops on failure
+console.log(`${deploy}`);  // "git commit --message deploy --all && git push"
+```
+
 ## Streaming
 
 ### Callbacks
@@ -267,30 +316,33 @@ Same as `convertCliToJs` but from a static help text string. Accepts `cwd` and `
 
 The returned proxy is both callable and has subcommand methods:
 
-| Access                           | Description                            |
-| -------------------------------- | -------------------------------------- |
-| `api.sub({ flag: val })`         | Run subcommand with options            |
-| `api.sub({ flag: val }, config)` | Run subcommand with per-call config    |
-| `api("sub", { flag: val })`      | Run subcommand by name                 |
-| `api({ flag: val })`             | Run root command                       |
-| `api.$schema`                    | Parsed `CliSchema`                     |
-| `api.$validate(opts)`            | Validate options against root schema   |
-| `api.$validate("sub", opts)`     | Validate options against subcommand    |
-| `api.$spawn.sub(opts)`           | Spawn subcommand, get `CommandProcess` |
-| `api.$parse("sub")`              | Lazily parse a subcommand's help text  |
-| `api.$parse()`                   | Parse all subcommand help texts        |
+| Access                           | Description                              |
+| -------------------------------- | ---------------------------------------- |
+| `api.sub({ flag: val })`         | Run subcommand, returns `CommandPromise` |
+| `api.sub(opts).text()`           | Run and get trimmed stdout               |
+| `api.sub(opts).lines()`          | Run and get stdout as `string[]`         |
+| `api.sub(opts).json<T>()`        | Run and parse stdout as JSON             |
+| `api("sub", { flag: val })`      | Run subcommand by name                   |
+| `api({ flag: val })`             | Run root command                         |
+| `api.$schema`                    | Parsed `CliSchema`                       |
+| `api.$validate(opts)`            | Validate options against root schema     |
+| `api.$validate("sub", opts)`     | Validate options against subcommand      |
+| `api.$command.sub(opts)`         | Get shell string without executing       |
+| `api.$spawn.sub(opts)`           | Spawn subcommand, get `CommandProcess`   |
+| `api.$parse("sub")`              | Lazily parse a subcommand's help text    |
+| `api.$parse()`                   | Parse all subcommand help texts          |
 
 ### `RunConfig`
 
-| Option     | Type                     | Default  | Description               |
-| ---------- | ------------------------ | -------- | ------------------------- |
-| `timeout`  | `number`                 | `30000`  | Command timeout (ms)      |
-| `signal`   | `AbortSignal`            | -        | Abort signal              |
-| `cwd`      | `string`                 | -        | Working directory         |
-| `env`      | `ProcessEnv`             | -        | Environment variables     |
-| `stdio`    | `"pipe" \| "inherit"`    | `"pipe"` | stdio mode                |
-| `onStdout` | `(data: string) => void` | -        | Real-time stdout callback |
-| `onStderr` | `(data: string) => void` | -        | Real-time stderr callback |
+| Option     | Type                     | Default    | Description               |
+| ---------- | ------------------------ | ---------- | ------------------------- | ---------- |
+| `timeout`  | `number`                 | `30000`    | Command timeout (ms)      |
+| `signal`   | `AbortSignal`            | -          | Abort signal              |
+| `cwd`      | `string`                 | -          | Working directory         |
+| `env`      | `ProcessEnv`             | -          | Environment variables     |
+| `stdio`    | `"pipe"                  | "inherit"` | `"pipe"`                  | stdio mode |
+| `onStdout` | `(data: string) => void` | -          | Real-time stdout callback |
+| `onStderr` | `(data: string) => void` | -          | Real-time stderr callback |
 
 Color output (`FORCE_COLOR`, `CLICOLOR_FORCE`) is auto-detected. It's enabled when streaming callbacks are provided and the parent process is connected to a TTY. To force it manually, pass `env: { ...process.env, FORCE_COLOR: "1" }`.
 

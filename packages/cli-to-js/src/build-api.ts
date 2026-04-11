@@ -1,16 +1,11 @@
 import type { CliSchema, ParsedCommand, ParsedFlag } from "./parse-help-text.js";
-import {
-  runCommand,
-  spawnCommand,
-  type CommandResult,
-  type RunConfig,
-  type CommandProcess,
-} from "./exec.js";
+import { runCommand, spawnCommand, type RunConfig, type CommandProcess } from "./exec.js";
 import { parseSubcommandHelp, enrichSubcommands } from "./parse-subcommands.js";
 import { validateOptions, type ValidationError } from "./validate.js";
 import { kebabToCamel } from "./utils/kebab-to-camel.js";
 import { toCommandString } from "./utils/to-command-string.js";
-import type { CliApi } from "./cli-api.js";
+import { enhancePromise } from "./utils/enhance-promise.js";
+import type { CliApi, CommandPromise } from "./cli-api.js";
 
 const RESERVED_PROPERTIES = new Set([
   "then",
@@ -231,19 +226,21 @@ export const buildApi = <
     subcommandOrOptions?: string | Record<string, unknown>,
     optionsOrConfig?: Record<string, unknown> | RunConfig,
     maybeConfig?: RunConfig,
-  ): Promise<CommandResult> => {
+  ): CommandPromise => {
     const normalized = normalizeCallArgs(
       subcommandOrOptions,
       optionsOrConfig,
       maybeConfig,
       mergeConfig,
     );
-    return runCommand(
-      binaryName,
-      normalized.subcommands,
-      normalized.options,
-      normalized.config,
-      rootEqualsFlags,
+    return enhancePromise(
+      runCommand(
+        binaryName,
+        normalized.subcommands,
+        normalized.options,
+        normalized.config,
+        rootEqualsFlags,
+      ),
     );
   };
 
@@ -260,11 +257,16 @@ export const buildApi = <
 
       const resolvedName = resolveAlias(schema, property);
       const effectiveEqualsFlags = getEqualsFlags(schema, resolvedName, rootEqualsFlags);
-      return (
-        options: Record<string, unknown> = {},
-        config: RunConfig = {},
-      ): Promise<CommandResult> =>
-        runCommand(binaryName, [resolvedName], options, mergeConfig(config), effectiveEqualsFlags);
+      return (options: Record<string, unknown> = {}, config: RunConfig = {}): CommandPromise =>
+        enhancePromise(
+          runCommand(
+            binaryName,
+            [resolvedName],
+            options,
+            mergeConfig(config),
+            effectiveEqualsFlags,
+          ),
+        );
     },
   }) as unknown as CliApi<T>;
 };
