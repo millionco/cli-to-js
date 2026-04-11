@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vite-plus/test";
+import { describe, it, expect, beforeAll } from "vite-plus/test";
 import { fromHelpText } from "../src/index.js";
 import { parseHelpText } from "../src/parse-help-text.js";
 import { generate } from "../src/generate.js";
@@ -280,10 +280,28 @@ describe("react-doctor", () => {
   });
 });
 
-describe("claude (live CLI)", () => {
-  it("parses claude --help into a schema with flags and subcommands", async () => {
+import { execSync } from "node:child_process";
+
+const hasClaudeCli = (() => {
+  try {
+    execSync("claude --version", { stdio: "pipe" });
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
+const describeIfClaude = hasClaudeCli ? describe : describe.skip;
+
+describeIfClaude("claude (live CLI)", () => {
+  let claude: Awaited<ReturnType<typeof import("../src/index.js").convertCliToJs>>;
+
+  beforeAll(async () => {
     const { convertCliToJs } = await import("../src/index.js");
-    const claude = await convertCliToJs("claude");
+    claude = await convertCliToJs("claude");
+  });
+
+  it("parses claude --help into a schema with flags and subcommands", () => {
     const schema = claude.$schema;
 
     expect(schema.binaryName).toBe("claude");
@@ -305,10 +323,7 @@ describe("claude (live CLI)", () => {
     expect(subcommandNames).toContain("mcp");
   });
 
-  it("$validate catches typos with did-you-mean", async () => {
-    const { convertCliToJs } = await import("../src/index.js");
-    const claude = await convertCliToJs("claude");
-
+  it("$validate catches typos with did-you-mean", () => {
     const errors = claude.$validate({ modle: "sonnet", prnt: true });
     expect(errors.length).toBeGreaterThanOrEqual(1);
     const modelError = errors.find((error) => error.name === "modle");
@@ -316,18 +331,12 @@ describe("claude (live CLI)", () => {
     expect(modelError!.suggestion).toBe("model");
   });
 
-  it("$validate passes with correct options", async () => {
-    const { convertCliToJs } = await import("../src/index.js");
-    const claude = await convertCliToJs("claude");
-
+  it("$validate passes with correct options", () => {
     const errors = claude.$validate({ print: true, model: "sonnet" });
     expect(errors).toEqual([]);
   });
 
-  it("$command produces correct shell strings", async () => {
-    const { convertCliToJs } = await import("../src/index.js");
-    const claude = await convertCliToJs("claude");
-
+  it("$command produces correct shell strings", () => {
     const commandString = claude.$command({ print: true, model: "sonnet", _: ["hello"] });
     expect(commandString).toBe("claude --print --model sonnet hello");
     expect(claude.$command.doctor()).toBe("claude doctor");
@@ -335,9 +344,6 @@ describe("claude (live CLI)", () => {
   });
 
   it("runs claude --print with .text() and gets a response", async () => {
-    const { convertCliToJs } = await import("../src/index.js");
-    const claude = await convertCliToJs("claude");
-
     const response = await claude({
       print: true,
       model: "sonnet",
@@ -349,9 +355,6 @@ describe("claude (live CLI)", () => {
   }, 60_000);
 
   it("runs claude --print --output-format json and parses with .json()", async () => {
-    const { convertCliToJs } = await import("../src/index.js");
-    const claude = await convertCliToJs("claude");
-
     const result = await claude({
       print: true,
       model: "sonnet",
