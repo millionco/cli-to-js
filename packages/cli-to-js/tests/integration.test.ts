@@ -339,4 +339,34 @@ describe("claude (live CLI)", () => {
     expect(claude.$command.doctor()).toBe("claude doctor");
     expect(claude.$command.auth()).toBe("claude auth");
   });
+
+  it("runs claude --print with .text() and gets a response", async () => {
+    const { convertCliToJs } = await import("../src/index.js");
+    const claude = await convertCliToJs("claude");
+
+    const response = await claude({
+      print: true,
+      model: "sonnet",
+      maxBudgetUsd: 0.01,
+      _: ["respond with exactly the word: pong"],
+    }).text();
+
+    expect(response.toLowerCase()).toContain("pong");
+  }, 60_000);
+
+  it("runs claude --print --output-format json and parses with .json()", async () => {
+    const { convertCliToJs } = await import("../src/index.js");
+    const claude = await convertCliToJs("claude");
+
+    const result = await claude({
+      print: true,
+      model: "sonnet",
+      outputFormat: "json",
+      maxBudgetUsd: 0.01,
+      _: ["respond with exactly: hello"],
+    }).json<{ result: string }>();
+
+    expect(result).toBeDefined();
+    expect(typeof result).toBe("object");
+  }, 60_000);
 });
