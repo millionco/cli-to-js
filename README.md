@@ -182,8 +182,8 @@ You can also use the raw `CommandResult` directly:
 
 ```ts
 const result = await git.status();
-result.stdout   // raw string
-result.exitCode // number
+result.stdout; // raw string
+result.exitCode; // number
 ```
 
 ## Command strings
@@ -191,10 +191,10 @@ result.exitCode // number
 `$command` returns the shell string instead of executing:
 
 ```ts
-git.$command.commit({ message: "fix", all: true })
+git.$command.commit({ message: "fix", all: true });
 // "git commit --message fix --all"
 
-git.$command.push({ force: true })
+git.$command.push({ force: true });
 // "git push --force"
 ```
 
@@ -203,13 +203,10 @@ Compose multiple commands into a runnable script with `script()`:
 ```ts
 import { script } from "cli-to-js";
 
-const deploy = script(
-  git.$command.commit({ message: "deploy", all: true }),
-  git.$command.push(),
-);
+const deploy = script(git.$command.commit({ message: "deploy", all: true }), git.$command.push());
 
-deploy.run();              // executes sequentially, stops on failure
-console.log(`${deploy}`);  // "git commit --message deploy --all && git push"
+deploy.run(); // executes sequentially, stops on failure
+console.log(`${deploy}`); // "git commit --message deploy --all && git push"
 ```
 
 ## Streaming
@@ -316,21 +313,21 @@ Same as `convertCliToJs` but from a static help text string. Accepts `cwd` and `
 
 The returned proxy is both callable and has subcommand methods:
 
-| Access                           | Description                              |
-| -------------------------------- | ---------------------------------------- |
-| `api.sub({ flag: val })`         | Run subcommand, returns `CommandPromise` |
-| `api.sub(opts).text()`           | Run and get trimmed stdout               |
-| `api.sub(opts).lines()`          | Run and get stdout as `string[]`         |
-| `api.sub(opts).json<T>()`        | Run and parse stdout as JSON             |
-| `api("sub", { flag: val })`      | Run subcommand by name                   |
-| `api({ flag: val })`             | Run root command                         |
-| `api.$schema`                    | Parsed `CliSchema`                       |
-| `api.$validate(opts)`            | Validate options against root schema     |
-| `api.$validate("sub", opts)`     | Validate options against subcommand      |
-| `api.$command.sub(opts)`         | Get shell string without executing       |
-| `api.$spawn.sub(opts)`           | Spawn subcommand, get `CommandProcess`   |
-| `api.$parse("sub")`              | Lazily parse a subcommand's help text    |
-| `api.$parse()`                   | Parse all subcommand help texts          |
+| Access                       | Description                              |
+| ---------------------------- | ---------------------------------------- |
+| `api.sub({ flag: val })`     | Run subcommand, returns `CommandPromise` |
+| `api.sub(opts).text()`       | Run and get trimmed stdout               |
+| `api.sub(opts).lines()`      | Run and get stdout as `string[]`         |
+| `api.sub(opts).json<T>()`    | Run and parse stdout as JSON             |
+| `api("sub", { flag: val })`  | Run subcommand by name                   |
+| `api({ flag: val })`         | Run root command                         |
+| `api.$schema`                | Parsed `CliSchema`                       |
+| `api.$validate(opts)`        | Validate options against root schema     |
+| `api.$validate("sub", opts)` | Validate options against subcommand      |
+| `api.$command.sub(opts)`     | Get shell string without executing       |
+| `api.$spawn.sub(opts)`       | Spawn subcommand, get `CommandProcess`   |
+| `api.$parse("sub")`          | Lazily parse a subcommand's help text    |
+| `api.$parse()`               | Parse all subcommand help texts          |
 
 ### `RunConfig`
 
