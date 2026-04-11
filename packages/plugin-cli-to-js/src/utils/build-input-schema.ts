@@ -1,49 +1,58 @@
 import type { ParsedFlag, ParsedPositionalArg } from "cli-to-js";
-import { kebabToCamel } from "./kebab-to-camel.js";
-import { flagToJsonSchemaProperty } from "./flag-to-json-schema.js";
+
+interface JsonSchemaProperty {
+  type: string;
+  description?: string;
+  default?: string;
+}
 
 interface JsonSchemaObject {
   type: "object";
-  properties: Record<string, { type: string; description?: string; default?: string }>;
+  properties: Record<string, JsonSchemaProperty>;
   required?: string[];
 }
+
+const kebabToCamel = (input: string): string =>
+  input.replace(/-([a-z])/g, (_match, character: string) => character.toUpperCase());
+
+const flagToProperty = (flag: ParsedFlag): JsonSchemaProperty => ({
+  type: flag.takesValue ? "string" : "boolean",
+  ...(flag.description ? { description: flag.description } : {}),
+  ...(flag.defaultValue ? { default: flag.defaultValue } : {}),
+});
+
+const formatPositionalSignature = (positionalArg: ParsedPositionalArg): string => {
+  const open = positionalArg.required ? "<" : "[";
+  const close = positionalArg.required ? ">" : "]";
+  const ellipsis = positionalArg.variadic ? "..." : "";
+  return `${open}${positionalArg.name}${ellipsis}${close}`;
+};
 
 export const buildInputSchema = (
   flags: ParsedFlag[],
   positionalArgs: ParsedPositionalArg[],
 ): JsonSchemaObject => {
-  const properties: Record<string, { type: string; description?: string; default?: string }> = {};
-  const required: string[] = [];
+  const properties: Record<string, JsonSchemaProperty> = {};
 
   for (const flag of flags) {
-    const propertyName = kebabToCamel(flag.longName);
-    properties[propertyName] = flagToJsonSchemaProperty(flag);
+    properties[kebabToCamel(flag.longName)] = flagToProperty(flag);
   }
 
   if (positionalArgs.length > 0) {
     const hasVariadic = positionalArgs.some((positionalArg) => positionalArg.variadic);
-    const positionalDescription = positionalArgs
-      .map(
-        (positionalArg) =>
-          `${positionalArg.required ? "<" : "["}${positionalArg.name}${positionalArg.variadic ? "..." : ""}${positionalArg.required ? ">" : "]"}`,
-      )
-      .join(" ");
+    const signature = positionalArgs.map(formatPositionalSignature).join(" ");
 
     properties._ = {
       type: hasVariadic ? "array" : "string",
-      description: `Positional arguments: ${positionalDescription}`,
+      description: `Positional arguments: ${signature}`,
     };
-
-    const hasRequiredPositional = positionalArgs.some((positionalArg) => positionalArg.required);
-    if (hasRequiredPositional) {
-      required.push("_");
-    }
   }
 
-  const schema: JsonSchemaObject = { type: "object", properties };
-  if (required.length > 0) {
-    schema.required = required;
-  }
+  const hasRequiredPositional = positionalArgs.some((positionalArg) => positionalArg.required);
 
-  return schema;
+  return {
+    type: "object",
+    properties,
+    ...(hasRequiredPositional ? { required: ["_"] } : {}),
+  };
 };

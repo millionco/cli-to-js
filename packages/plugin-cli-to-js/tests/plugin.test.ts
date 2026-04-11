@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vite-plus/test";
-import { createExecutor } from "@executor-js/sdk";
+import { describe, it, expect, afterEach } from "vite-plus/test";
+import { createExecutor, type Executor } from "@executor-js/sdk";
 import { cliPlugin } from "../src/plugin.js";
 
 const ECHO_HELP_TEXT = `Usage: echo [OPTION]... [STRING]...
@@ -13,7 +13,7 @@ Options:
   --help             display this help and exit
   --version          output version information and exit`;
 
-const GIT_STYLE_HELP_TEXT = `Usage: test-cli [options] <command>
+const MULTI_COMMAND_HELP_TEXT = `Usage: test-cli [options] <command>
 
 A fictional CLI for testing
 
@@ -26,189 +26,125 @@ Commands:
   build          Build the project
   deploy         Deploy to production`;
 
-describe("cliPlugin", () => {
-  it("registers under the 'cli' key", async () => {
-    const executor = await createExecutor({
-      scope: { name: "test" },
-      plugins: [cliPlugin()] as const,
-    });
+let executor: Executor<readonly [ReturnType<typeof cliPlugin>]>;
 
+const startExecutor = async () => {
+  executor = await createExecutor({
+    scope: { name: "test" },
+    plugins: [cliPlugin()] as const,
+  });
+  return executor;
+};
+
+afterEach(async () => {
+  await executor?.close();
+});
+
+const toolNamesForSource = async (sourceId: string): Promise<string[]> => {
+  const tools = await executor.tools.list();
+  return tools.filter((tool) => String(tool.sourceId) === sourceId).map((tool) => tool.name);
+};
+
+describe("cliPlugin", () => {
+  it("exposes the full extension API under the 'cli' key", async () => {
+    await startExecutor();
     expect(executor.cli).toBeDefined();
     expect(typeof executor.cli.addBinary).toBe("function");
     expect(typeof executor.cli.addHelpText).toBe("function");
     expect(typeof executor.cli.removeBinary).toBe("function");
     expect(typeof executor.cli.list).toBe("function");
-
-    await executor.close();
   });
 
   it("starts with an empty list", async () => {
-    const executor = await createExecutor({
-      scope: { name: "test" },
-      plugins: [cliPlugin()] as const,
-    });
-
+    await startExecutor();
     expect(executor.cli.list()).toEqual([]);
-    await executor.close();
   });
 });
 
-describe("cliPlugin.addHelpText", () => {
-  it("registers tools from help text", async () => {
-    const executor = await createExecutor({
-      scope: { name: "test" },
-      plugins: [cliPlugin()] as const,
-    });
-
-    await executor.cli.addHelpText({
-      binary: "echo",
-      helpText: ECHO_HELP_TEXT,
-      namespace: "echo",
-    });
+describe("addHelpText", () => {
+  it("registers a root tool from help text", async () => {
+    await startExecutor();
+    await executor.cli.addHelpText({ binary: "echo", helpText: ECHO_HELP_TEXT, namespace: "echo" });
 
     expect(executor.cli.list()).toEqual(["echo"]);
-
-    const tools = await executor.tools.list();
-    const echoTools = tools.filter((tool) => String(tool.sourceId) === "cli:echo");
-    expect(echoTools.length).toBeGreaterThanOrEqual(1);
-
-    const rootTool = echoTools.find((tool) => tool.name === "run");
-    expect(rootTool).toBeDefined();
-    expect(rootTool!.description).toContain("echo");
-
-    await executor.close();
+    expect(await toolNamesForSource("cli:echo")).toContain("run");
   });
 
-  it("registers subcommand tools from help text with commands", async () => {
-    const executor = await createExecutor({
-      scope: { name: "test" },
-      plugins: [cliPlugin()] as const,
-    });
-
+  it("registers subcommand tools alongside the root tool", async () => {
+    await startExecutor();
     await executor.cli.addHelpText({
       binary: "test-cli",
-      helpText: GIT_STYLE_HELP_TEXT,
-      namespace: "testcli",
+      helpText: MULTI_COMMAND_HELP_TEXT,
+      namespace: "tc",
     });
 
-    const tools = await executor.tools.list();
-    const cliTools = tools.filter((tool) => String(tool.sourceId) === "cli:testcli");
-
-    const toolNames = cliTools.map((tool) => tool.name);
+    const toolNames = await toolNamesForSource("cli:tc");
     expect(toolNames).toContain("run");
     expect(toolNames).toContain("init");
     expect(toolNames).toContain("build");
     expect(toolNames).toContain("deploy");
-
-    await executor.close();
   });
 
-  it("uses binary name as namespace when namespace is omitted", async () => {
-    const executor = await createExecutor({
-      scope: { name: "test" },
-      plugins: [cliPlugin()] as const,
-    });
-
-    await executor.cli.addHelpText({
-      binary: "my-tool",
-      helpText: ECHO_HELP_TEXT,
-    });
-
+  it("defaults namespace to the binary name", async () => {
+    await startExecutor();
+    await executor.cli.addHelpText({ binary: "my-tool", helpText: ECHO_HELP_TEXT });
     expect(executor.cli.list()).toEqual(["my-tool"]);
-    await executor.close();
   });
 
-  it("generates input schema with flags as properties", async () => {
-    const executor = await createExecutor({
-      scope: { name: "test" },
-      plugins: [cliPlugin()] as const,
-    });
-
+  it("generates JSON Schema inputSchema with typed flag properties", async () => {
+    await startExecutor();
     await executor.cli.addHelpText({
       binary: "test-cli",
-      helpText: GIT_STYLE_HELP_TEXT,
+      helpText: MULTI_COMMAND_HELP_TEXT,
       namespace: "tc",
     });
 
     const schema = await executor.tools.schema("tc.run");
-    expect(schema).toBeDefined();
-    expect(schema.inputSchema).toBeDefined();
-
     const inputSchema = schema.inputSchema as {
       type: string;
       properties: Record<string, { type: string }>;
     };
-    expect(inputSchema.type).toBe("object");
-    expect(inputSchema.properties.verbose).toBeDefined();
-    expect(inputSchema.properties.verbose.type).toBe("boolean");
-    expect(inputSchema.properties.output).toBeDefined();
-    expect(inputSchema.properties.output.type).toBe("string");
 
-    await executor.close();
+    expect(inputSchema.type).toBe("object");
+    expect(inputSchema.properties.verbose.type).toBe("boolean");
+    expect(inputSchema.properties.output.type).toBe("string");
   });
 });
 
-describe("cliPlugin.addBinary", () => {
-  it("registers tools by running echo --help", async () => {
-    const executor = await createExecutor({
-      scope: { name: "test" },
-      plugins: [cliPlugin()] as const,
-    });
-
+describe("addBinary", () => {
+  it("auto-discovers tools by running the binary's --help", async () => {
+    await startExecutor();
     await executor.cli.addBinary({ binary: "echo" });
 
     expect(executor.cli.list()).toEqual(["echo"]);
-
-    const tools = await executor.tools.list();
-    const echoTools = tools.filter((tool) => String(tool.sourceId) === "cli:echo");
-    expect(echoTools.length).toBeGreaterThanOrEqual(1);
-
-    await executor.close();
+    expect((await toolNamesForSource("cli:echo")).length).toBeGreaterThanOrEqual(1);
   });
 });
 
-describe("cliPlugin tool invocation", () => {
-  it("invokes the root tool and returns stdout", async () => {
-    const executor = await createExecutor({
-      scope: { name: "test" },
-      plugins: [cliPlugin()] as const,
-    });
-
-    await executor.cli.addHelpText({
-      binary: "echo",
-      helpText: ECHO_HELP_TEXT,
-      namespace: "echo",
-    });
+describe("tool invocation", () => {
+  it("invokes the root tool and returns stdout/stderr/exitCode", async () => {
+    await startExecutor();
+    await executor.cli.addHelpText({ binary: "echo", helpText: ECHO_HELP_TEXT, namespace: "echo" });
 
     const result = await executor.tools.invoke(
       "echo.run",
       { _: "hello world" },
-      {
-        onElicitation: "accept-all",
-      },
+      { onElicitation: "accept-all" },
     );
-    const data = result.data as { stdout: string; stderr: string; exitCode: number };
+    const data = result.data as { stdout: string; exitCode: number };
     expect(data.stdout.trim()).toBe("hello world");
     expect(data.exitCode).toBe(0);
-
-    await executor.close();
   });
 
-  it("invokes a subcommand tool via the executor", async () => {
-    const executor = await createExecutor({
-      scope: { name: "test" },
-      plugins: [cliPlugin()] as const,
-    });
-
+  it("invokes a subcommand tool", async () => {
+    await startExecutor();
     await executor.cli.addHelpText({
       binary: "node",
       helpText: `Usage: node [options] [script]
 
 Options:
   -e, --eval <script>    evaluate script
-  -p, --print <script>   evaluate and print
   --help                 display this help and exit
-  --version              output version info
 
 Commands:
   run                    run a script`,
@@ -220,109 +156,44 @@ Commands:
       { eval: 'console.log("executor-test")' },
       { onElicitation: "accept-all" },
     );
-    const data = result.data as { stdout: string; stderr: string; exitCode: number };
+    const data = result.data as { stdout: string };
     expect(data.stdout.trim()).toBe("executor-test");
-
-    await executor.close();
   });
 
-  it("throws ToolNotFoundError for unregistered tool ID", async () => {
-    const executor = await createExecutor({
-      scope: { name: "test" },
-      plugins: [cliPlugin()] as const,
-    });
-
-    await executor.cli.addHelpText({
-      binary: "echo",
-      helpText: ECHO_HELP_TEXT,
-      namespace: "echo",
-    });
+  it("throws ToolNotFoundError for an unregistered tool ID", async () => {
+    await startExecutor();
+    await executor.cli.addHelpText({ binary: "echo", helpText: ECHO_HELP_TEXT, namespace: "echo" });
 
     await expect(
       executor.tools.invoke("missing.run", {}, { onElicitation: "accept-all" }),
     ).rejects.toThrow();
-
-    await executor.close();
   });
 });
 
-describe("cliPlugin.removeBinary", () => {
-  it("removes a registered binary and its tools", async () => {
-    const executor = await createExecutor({
-      scope: { name: "test" },
-      plugins: [cliPlugin()] as const,
-    });
-
-    await executor.cli.addHelpText({
-      binary: "echo",
-      helpText: ECHO_HELP_TEXT,
-      namespace: "echo",
-    });
-    expect(executor.cli.list()).toEqual(["echo"]);
+describe("removeBinary", () => {
+  it("removes a registered binary and all its tools", async () => {
+    await startExecutor();
+    await executor.cli.addHelpText({ binary: "echo", helpText: ECHO_HELP_TEXT, namespace: "echo" });
 
     await executor.cli.removeBinary("echo");
+
     expect(executor.cli.list()).toEqual([]);
-
-    const tools = await executor.tools.list();
-    const echoTools = tools.filter((tool) => String(tool.sourceId) === "cli:echo");
-    expect(echoTools).toHaveLength(0);
-
-    await executor.close();
+    expect(await toolNamesForSource("cli:echo")).toHaveLength(0);
   });
 });
 
-describe("cliPlugin.close", () => {
-  it("cleans up all registered tools on executor close", async () => {
-    const executor = await createExecutor({
-      scope: { name: "test" },
-      plugins: [cliPlugin()] as const,
-    });
-
-    await executor.cli.addHelpText({
-      binary: "echo",
-      helpText: ECHO_HELP_TEXT,
-      namespace: "echo",
-    });
+describe("multiple binaries", () => {
+  it("registers and isolates tools from separate binaries", async () => {
+    await startExecutor();
+    await executor.cli.addHelpText({ binary: "echo", helpText: ECHO_HELP_TEXT, namespace: "echo" });
     await executor.cli.addHelpText({
       binary: "test-cli",
-      helpText: GIT_STYLE_HELP_TEXT,
+      helpText: MULTI_COMMAND_HELP_TEXT,
       namespace: "tc",
     });
 
-    const toolsBefore = await executor.tools.list();
-    expect(toolsBefore.length).toBeGreaterThan(0);
-
-    await executor.close();
-  });
-
-  it("supports registering multiple binaries simultaneously", async () => {
-    const executor = await createExecutor({
-      scope: { name: "test" },
-      plugins: [cliPlugin()] as const,
-    });
-
-    await executor.cli.addHelpText({
-      binary: "echo",
-      helpText: ECHO_HELP_TEXT,
-      namespace: "echo",
-    });
-    await executor.cli.addHelpText({
-      binary: "test-cli",
-      helpText: GIT_STYLE_HELP_TEXT,
-      namespace: "tc",
-    });
-
-    const registered = executor.cli.list();
-    expect(registered).toContain("echo");
-    expect(registered).toContain("tc");
-    expect(registered).toHaveLength(2);
-
-    const tools = await executor.tools.list();
-    const echoTools = tools.filter((tool) => String(tool.sourceId) === "cli:echo");
-    const tcTools = tools.filter((tool) => String(tool.sourceId) === "cli:tc");
-    expect(echoTools.length).toBeGreaterThan(0);
-    expect(tcTools.length).toBeGreaterThan(0);
-
-    await executor.close();
+    expect(executor.cli.list().sort()).toEqual(["echo", "tc"]);
+    expect((await toolNamesForSource("cli:echo")).length).toBeGreaterThan(0);
+    expect((await toolNamesForSource("cli:tc")).length).toBeGreaterThan(0);
   });
 });

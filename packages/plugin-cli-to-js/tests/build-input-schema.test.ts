@@ -15,29 +15,65 @@ const createFlag = (overrides: Partial<ParsedFlag> = {}): ParsedFlag => ({
 
 describe("buildInputSchema", () => {
   it("returns an empty object schema for no flags or positionals", () => {
-    const schema = buildInputSchema([], []);
-    expect(schema).toEqual({ type: "object", properties: {} });
+    expect(buildInputSchema([], [])).toEqual({ type: "object", properties: {} });
   });
 
-  it("converts flags to properties with camelCase keys", () => {
-    const flags: ParsedFlag[] = [
-      createFlag({ longName: "dry-run", takesValue: false, description: "Simulate" }),
-      createFlag({ longName: "output", takesValue: true, description: "Output file" }),
-    ];
-    const schema = buildInputSchema(flags, []);
+  it("converts kebab-case flag names to camelCase property keys", () => {
+    const schema = buildInputSchema(
+      [createFlag({ longName: "dry-run", takesValue: false, description: "Simulate" })],
+      [],
+    );
     expect(schema.properties.dryRun).toEqual({ type: "boolean", description: "Simulate" });
-    expect(schema.properties.output).toEqual({ type: "string", description: "Output file" });
+    expect(schema.properties["dry-run"]).toBeUndefined();
   });
 
-  it("adds positional arg property with string type when not variadic", () => {
+  it("maps boolean flags to boolean type and value flags to string type", () => {
+    const schema = buildInputSchema(
+      [
+        createFlag({ longName: "verbose", takesValue: false }),
+        createFlag({ longName: "output", takesValue: true }),
+      ],
+      [],
+    );
+    expect(schema.properties.verbose.type).toBe("boolean");
+    expect(schema.properties.output.type).toBe("string");
+  });
+
+  it("includes flag description and default when present", () => {
+    const schema = buildInputSchema(
+      [
+        createFlag({
+          longName: "level",
+          takesValue: true,
+          description: "Log level",
+          defaultValue: "info",
+        }),
+      ],
+      [],
+    );
+    expect(schema.properties.level).toEqual({
+      type: "string",
+      description: "Log level",
+      default: "info",
+    });
+  });
+
+  it("omits description and default when absent", () => {
+    const schema = buildInputSchema(
+      [createFlag({ longName: "force", takesValue: false, description: "", defaultValue: null })],
+      [],
+    );
+    expect(schema.properties.force).toEqual({ type: "boolean" });
+  });
+
+  it("adds _ property with string type for non-variadic positionals", () => {
     const positionals: ParsedPositionalArg[] = [{ name: "file", required: true, variadic: false }];
     const schema = buildInputSchema([], positionals);
-    expect(schema.properties._).toBeDefined();
     expect(schema.properties._.type).toBe("string");
-    expect(schema.properties._.description).toContain("<file>");
+    expect(schema.properties._.description).toBe("Positional arguments: <file>");
   });
 
-  it("adds positional arg property with array type when variadic", () => {
+  it("adds _ property with array type when any positional is variadic", () => {
     const positionals: ParsedPositionalArg[] = [{ name: "files", required: false, variadic: true }];
     const schema = buildInputSchema([], positionals);
     expect(schema.properties._.type).toBe("array");
@@ -49,33 +85,32 @@ describe("buildInputSchema", () => {
       { name: "source", required: true, variadic: false },
       { name: "extras", required: false, variadic: true },
     ];
-    const schema = buildInputSchema([], positionals);
-    expect(schema.required).toContain("_");
+    expect(buildInputSchema([], positionals).required).toEqual(["_"]);
   });
 
   it("omits required when all positionals are optional", () => {
     const positionals: ParsedPositionalArg[] = [
       { name: "target", required: false, variadic: false },
     ];
-    const schema = buildInputSchema([], positionals);
-    expect(schema.required).toBeUndefined();
+    expect(buildInputSchema([], positionals).required).toBeUndefined();
   });
 
-  it("combines flags and positionals in one schema", () => {
-    const flags: ParsedFlag[] = [createFlag({ longName: "verbose", takesValue: false })];
-    const positionals: ParsedPositionalArg[] = [{ name: "path", required: true, variadic: false }];
-    const schema = buildInputSchema(flags, positionals);
-    expect(Object.keys(schema.properties)).toContain("verbose");
-    expect(Object.keys(schema.properties)).toContain("_");
-    expect(schema.required).toEqual(["_"]);
-  });
-
-  it("builds description showing multiple positional args", () => {
+  it("builds description showing mixed required/optional positional signatures", () => {
     const positionals: ParsedPositionalArg[] = [
       { name: "source", required: true, variadic: false },
-      { name: "destination", required: true, variadic: false },
+      { name: "destination", required: false, variadic: false },
     ];
-    const schema = buildInputSchema([], positionals);
-    expect(schema.properties._.description).toBe("Positional arguments: <source> <destination>");
+    expect(buildInputSchema([], positionals).properties._.description).toBe(
+      "Positional arguments: <source> [destination]",
+    );
+  });
+
+  it("combines flags and positionals into one schema", () => {
+    const schema = buildInputSchema(
+      [createFlag({ longName: "verbose", takesValue: false })],
+      [{ name: "path", required: true, variadic: false }],
+    );
+    expect(Object.keys(schema.properties).sort()).toEqual(["_", "verbose"]);
+    expect(schema.required).toEqual(["_"]);
   });
 });

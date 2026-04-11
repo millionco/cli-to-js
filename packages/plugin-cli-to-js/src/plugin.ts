@@ -12,7 +12,7 @@ import {
   type CliApi,
   type CliSchema,
   type CliToJsOptions,
-  type CommandResult,
+  type ParsedSubcommand,
 } from "cli-to-js";
 import { PLUGIN_KEY, SOURCE_PREFIX, ROOT_TOOL_SUFFIX } from "./constants.js";
 import { buildInputSchema } from "./utils/build-input-schema.js";
@@ -37,17 +37,29 @@ interface CliPluginExtension {
   list: () => string[];
 }
 
-const makeSourceId = (namespace: string): string => `${SOURCE_PREFIX}${namespace}`;
+const parseToolId = (toolId: string): { namespace: string; command: string } | null => {
+  const dotIndex = toolId.indexOf(".");
+  if (dotIndex === -1) return null;
+  return { namespace: toolId.slice(0, dotIndex), command: toolId.slice(dotIndex + 1) };
+};
 
-const makeToolId = (namespace: string, toolName: string): string => `${namespace}.${toolName}`;
+const describeCommand = (binaryName: string, label: string, description: string): string =>
+  description ? `${binaryName} ${label}: ${description}` : `${binaryName} ${label}`;
 
-const formatCommandResult = (
-  result: CommandResult,
-): { stdout: string; stderr: string; exitCode: number } => ({
-  stdout: result.stdout,
-  stderr: result.stderr,
-  exitCode: result.exitCode,
-});
+const subcommandToRegistration = (
+  namespace: string,
+  sourceId: string,
+  binaryName: string,
+  subcommand: ParsedSubcommand,
+): ToolRegistration =>
+  new ToolRegistration({
+    id: ToolId.make(`${namespace}.${subcommand.name}`),
+    pluginKey: PLUGIN_KEY,
+    sourceId,
+    name: subcommand.name,
+    description: describeCommand(binaryName, subcommand.name, subcommand.description),
+    inputSchema: buildInputSchema(subcommand.flags ?? [], subcommand.positionalArgs ?? []),
+  });
 
 export const cliPlugin = () =>
   definePlugin({
@@ -57,41 +69,30 @@ export const cliPlugin = () =>
 
       await ctx.tools.registerInvoker(PLUGIN_KEY, {
         invoke: async (toolIdString: string, args: unknown, _options: InvokeOptions) => {
-          const toolId = String(toolIdString);
-          const dotIndex = toolId.indexOf(".");
-          if (dotIndex === -1) {
+          const parsed = parseToolId(toolIdString);
+          if (!parsed) {
             return new ToolInvocationResult({
               data: null,
-              error: `Invalid tool ID format: "${toolId}". Expected "namespace.command".`,
+              error: `Invalid tool ID format: "${toolIdString}". Expected "namespace.command".`,
             });
           }
 
-          const namespace = toolId.slice(0, dotIndex);
-          const commandName = toolId.slice(dotIndex + 1);
-          const api = registeredApis.get(namespace);
-
+          const api = registeredApis.get(parsed.namespace);
           if (!api) {
             return new ToolInvocationResult({
               data: null,
-              error: `No CLI binary registered under namespace "${namespace}".`,
+              error: `No CLI binary registered under namespace "${parsed.namespace}".`,
             });
           }
 
-          const options = (args ?? {}) as Record<string, unknown>;
-
           try {
-            let result: CommandResult;
+            const options = (args ?? {}) as Record<string, unknown>;
+            const result =
+              parsed.command === ROOT_TOOL_SUFFIX
+                ? await api(options)
+                : await api(parsed.command, options);
 
-            if (commandName === ROOT_TOOL_SUFFIX) {
-              result = await api(options);
-            } else {
-              result = await api(commandName, options);
-            }
-
-            return new ToolInvocationResult({
-              data: formatCommandResult(result),
-              error: null,
-            });
+            return new ToolInvocationResult({ data: result, error: null });
           } catch (invocationError) {
             return new ToolInvocationResult({
               data: null,
@@ -108,85 +109,60 @@ export const cliPlugin = () =>
         namespace: string,
         schema: CliSchema,
       ): Promise<void> => {
-        const sourceId = makeSourceId(namespace);
-        const toolRegistrations: ToolRegistration[] = [];
+        const sourceId = `${SOURCE_PREFIX}${namespace}`;
+        const { binaryName, command } = schema;
 
-        const rootToolId = makeToolId(namespace, ROOT_TOOL_SUFFIX);
-        const rootInputSchema = buildInputSchema(
-          schema.command.flags,
-          schema.command.positionalArgs,
+        const rootRegistration = new ToolRegistration({
+          id: ToolId.make(`${namespace}.${ROOT_TOOL_SUFFIX}`),
+          pluginKey: PLUGIN_KEY,
+          sourceId,
+          name: ROOT_TOOL_SUFFIX,
+          description: describeCommand(binaryName, ROOT_TOOL_SUFFIX, command.description),
+          inputSchema: buildInputSchema(command.flags, command.positionalArgs),
+        });
+
+        const subcommandRegistrations = command.subcommands.map((subcommand) =>
+          subcommandToRegistration(namespace, sourceId, binaryName, subcommand),
         );
 
-        toolRegistrations.push(
-          new ToolRegistration({
-            id: ToolId.make(rootToolId),
-            pluginKey: PLUGIN_KEY,
-            sourceId,
-            name: ROOT_TOOL_SUFFIX,
-            description: schema.command.description
-              ? `Run ${schema.binaryName}: ${schema.command.description}`
-              : `Run ${schema.binaryName}`,
-            inputSchema: rootInputSchema,
-          }),
-        );
+        await ctx.tools.register([rootRegistration, ...subcommandRegistrations]);
+      };
 
-        for (const subcommand of schema.command.subcommands) {
-          const subcommandToolId = makeToolId(namespace, subcommand.name);
-          const subcommandFlags = subcommand.flags ?? [];
-          const subcommandPositionals = subcommand.positionalArgs ?? [];
-          const subcommandInputSchema = buildInputSchema(subcommandFlags, subcommandPositionals);
-
-          toolRegistrations.push(
-            new ToolRegistration({
-              id: ToolId.make(subcommandToolId),
-              pluginKey: PLUGIN_KEY,
-              sourceId,
-              name: subcommand.name,
-              description: subcommand.description
-                ? `${schema.binaryName} ${subcommand.name}: ${subcommand.description}`
-                : `${schema.binaryName} ${subcommand.name}`,
-              inputSchema: subcommandInputSchema,
-            }),
-          );
-        }
-
-        await ctx.tools.register(toolRegistrations);
+      const registerApi = async (namespace: string, api: CliApi): Promise<void> => {
+        registeredApis.set(namespace, api);
+        await registerToolsFromSchema(namespace, api.$schema);
       };
 
       const addBinary = async (config: AddBinaryConfig): Promise<void> => {
         const namespace = config.namespace ?? config.binary;
         const api = await convertCliToJs(config.binary, config.options);
-        registeredApis.set(namespace, api);
-        await registerToolsFromSchema(namespace, api.$schema);
+        await registerApi(namespace, api);
       };
 
       const addHelpText = async (config: AddHelpTextConfig): Promise<void> => {
         const namespace = config.namespace ?? config.binary;
         const api = fromHelpText(config.binary, config.helpText, config.options);
-        registeredApis.set(namespace, api);
-        await registerToolsFromSchema(namespace, api.$schema);
+        await registerApi(namespace, api);
       };
 
       const removeBinary = async (namespace: string): Promise<void> => {
         registeredApis.delete(namespace);
-        const sourceId = makeSourceId(namespace);
-        await ctx.tools.unregisterBySource(sourceId);
+        await ctx.tools.unregisterBySource(`${SOURCE_PREFIX}${namespace}`);
       };
-
-      const listRegistered = (): string[] => [...registeredApis.keys()];
 
       return {
         extension: {
           addBinary,
           addHelpText,
           removeBinary,
-          list: listRegistered,
+          list: () => [...registeredApis.keys()],
         } satisfies CliPluginExtension,
         close: async () => {
-          for (const namespace of registeredApis.keys()) {
-            const sourceId = makeSourceId(namespace);
-            await ctx.tools.unregisterBySource(sourceId);
-          }
+          await Promise.all(
+            [...registeredApis.keys()].map((namespace) =>
+              ctx.tools.unregisterBySource(`${SOURCE_PREFIX}${namespace}`),
+            ),
+          );
           registeredApis.clear();
         },
       };
