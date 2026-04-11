@@ -8,7 +8,6 @@ import {
 } from "./exec.js";
 import { parseSubcommandHelp, enrichSubcommands } from "./parse-subcommands.js";
 import { validateOptions, type ValidationError } from "./validate.js";
-import { createPipelineProxy } from "./pipe.js";
 import type { CliApi } from "./cli-api.js";
 
 const RESERVED_PROPERTIES = new Set([
@@ -156,7 +155,6 @@ export const buildApi = <
     get(target, property) {
       if (property === "$schema") return schema;
       if (property === "$validate") return handleValidate;
-      if (property === "$pipe") return createPipelineProxy(binaryName, defaultConfig);
       if (property === "$spawn") return buildSpawnProxy();
       if (property === "$parse") return handleParse;
       if (typeof property === "symbol") return Reflect.get(target, property);

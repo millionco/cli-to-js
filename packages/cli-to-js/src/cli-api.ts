@@ -1,7 +1,6 @@
 import type { CommandResult, RunConfig, CommandProcess } from "./exec.js";
 import type { CliSchema, ParsedCommand } from "./parse-help-text.js";
 import type { ValidationError } from "./validate.js";
-import type { Pipeline } from "./pipe.js";
 
 interface SubcommandFn<TOptions = Record<string, unknown>> {
   (
@@ -38,8 +37,6 @@ interface CliApiBase {
     (options?: Record<string, unknown>, config?: RunConfig): CommandProcess;
     (subcommand: string, options?: Record<string, unknown>, config?: RunConfig): CommandProcess;
   };
-  $pipe: Pipeline &
-    Record<string, (options?: Record<string, unknown>, config?: RunConfig) => Pipeline>;
 }
 
 type CliApi<

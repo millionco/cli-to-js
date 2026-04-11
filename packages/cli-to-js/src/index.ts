@@ -38,9 +38,6 @@ export { loadSchema } from "./load-schema.js";
 export { parseSubcommandHelp, enrichSubcommands } from "./parse-subcommands.js";
 export { generate, generateTypes } from "./generate.js";
 export { validateOptions } from "./validate.js";
-export { Pipeline, createCommandStep, createPipelineProxy } from "./pipe.js";
-export { map, filter, take } from "./utils/async-iterable.js";
-export type { AsyncTransform } from "./utils/async-iterable.js";
 export type { ValidationError } from "./validate.js";
 export type { CliApi, CliApiBase, SubcommandFn, SpawnFn } from "./cli-api.js";
 export type {
