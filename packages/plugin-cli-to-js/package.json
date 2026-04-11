@@ -44,6 +44,7 @@
   "scripts": {
     "build": "vp pack",
     "dev": "vp pack --watch",
+    "test": "vp test run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
