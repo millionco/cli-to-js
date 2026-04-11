@@ -9,7 +9,7 @@ export const loadSchema = async (
   binaryName: string,
   options: CliToJsOptions = {},
 ): Promise<CliSchema> => {
-  const { helpFlag = "--help", timeout = HELP_TIMEOUT_MS, cwd, env, subcommands = false } = options;
+  const { helpFlag = "--help", timeout = HELP_TIMEOUT_MS, cwd, env, subcommands = true } = options;
 
   const result = await runForHelp(binaryName, [helpFlag], timeout, cwd, env);
   const helpText = selectHelpOutput(result.stdout, result.stderr);

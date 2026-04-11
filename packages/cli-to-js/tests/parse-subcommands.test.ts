@@ -152,8 +152,8 @@ Commands:
 });
 
 describe("convertCliToJs with subcommands option", () => {
-  it("eagerly parses subcommand help texts when subcommands: true", async () => {
-    const api = await convertCliToJs("git", { subcommands: true });
+  it("eagerly parses subcommand help texts by default", async () => {
+    const api = await convertCliToJs("git");
 
     const commitSubcmd = api.$schema.command.subcommands.find((s) => s.name === "commit");
     if (commitSubcmd) {
@@ -162,8 +162,8 @@ describe("convertCliToJs with subcommands option", () => {
     }
   });
 
-  it("does not parse subcommands by default", async () => {
-    const api = await convertCliToJs("git");
+  it("skips subcommand parsing when subcommands: false", async () => {
+    const api = await convertCliToJs("git", { subcommands: false });
 
     const commitSubcmd = api.$schema.command.subcommands.find((s) => s.name === "commit");
     if (commitSubcmd) {

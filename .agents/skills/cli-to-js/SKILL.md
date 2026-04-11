@@ -39,7 +39,8 @@ await tool.subcommand({ json: true }).json<MyType>();
 await tool.subcommand().lines();
 
 // Streaming
-for await (const line of tool.$spawn.subcommand({ watch: true })) {}
+for await (const line of tool.$spawn.subcommand({ watch: true })) {
+}
 
 // Validation (did-you-mean, choices, required flags, exclusive flags)
 const errors = tool.$validate({ misspeled: true });
@@ -50,41 +51,47 @@ tool.$command.subcommand({ flag: "val" });
 
 // Compose into runnable script
 const deploy = script(git.$command.push(), docker.$command.build({ tag: "app", _: ["."] }));
-deploy.run();              // execute with &&
-console.log(`${deploy}`);  // get the string
+deploy.run(); // execute with &&
+console.log(`${deploy}`); // get the string
 ```
 
 ## When building tools
 
 **Bad:**
+
 ```ts
 const result = await api.status();
 const lines = result.stdout.trim().split("\n");
 ```
 
 **Good:**
+
 ```ts
 const statusLines = await api.status().lines();
 ```
 
 **Bad:**
+
 ```ts
 const api1 = await convertCliToJs("git");
 const api2 = await convertCliToJs("git"); // wasteful duplicate
 ```
 
 **Good:**
+
 ```ts
 const git = await convertCliToJs("git");
 // reuse git everywhere
 ```
 
 **Bad:**
+
 ```ts
 await api.commit({ mesage: "fix" }); // typo silently becomes unknown flag
 ```
 
 **Good:**
+
 ```ts
 const errors = api.$validate({ mesage: "fix" });
 // [{ kind: "unknown-flag", suggestion: "message" }]
@@ -114,16 +121,16 @@ for (const file of files) {
 
 ## Full API surface
 
-| Method                       | Returns            | Use for                        |
-|------------------------------|--------------------|--------------------------------|
-| `api.sub(opts)`              | `CommandPromise`   | Run subcommand                 |
-| `.text()`                    | `Promise<string>`  | Trimmed stdout                 |
-| `.lines()`                   | `Promise<string[]>`| Split by newlines              |
-| `.json<T>()`                 | `Promise<T>`       | Parse JSON output              |
-| `api.$spawn.sub(opts)`       | `CommandProcess`   | `for await` streaming          |
-| `api.$command.sub(opts)`     | `string`           | Shell string, no execution     |
-| `api.$validate(opts)`        | `ValidationError[]`| Pre-flight flag checking       |
-| `api.$validate("sub", opts)` | `ValidationError[]`| Subcommand flag checking       |
-| `api.$schema`                | `CliSchema`        | Parsed schema from --help      |
-| `api.$parse("sub")`          | `ParsedCommand`    | Lazily enrich subcommand       |
-| `script(...cmds)`            | `{ run, toString }`| Compose && chain               |
+| Method                       | Returns             | Use for                    |
+| ---------------------------- | ------------------- | -------------------------- |
+| `api.sub(opts)`              | `CommandPromise`    | Run subcommand             |
+| `.text()`                    | `Promise<string>`   | Trimmed stdout             |
+| `.lines()`                   | `Promise<string[]>` | Split by newlines          |
+| `.json<T>()`                 | `Promise<T>`        | Parse JSON output          |
+| `api.$spawn.sub(opts)`       | `CommandProcess`    | `for await` streaming      |
+| `api.$command.sub(opts)`     | `string`            | Shell string, no execution |
+| `api.$validate(opts)`        | `ValidationError[]` | Pre-flight flag checking   |
+| `api.$validate("sub", opts)` | `ValidationError[]` | Subcommand flag checking   |
+| `api.$schema`                | `CliSchema`         | Parsed schema from --help  |
+| `api.$parse("sub")`          | `ParsedCommand`     | Lazily enrich subcommand   |
+| `script(...cmds)`            | `{ run, toString }` | Compose && chain           |

@@ -2,7 +2,7 @@
 
 > **Warning:** This project is very experimental. APIs may change without notice.
 
-Turn any CLI into a JavaScript API, automatically. 
+Turn any CLI into a JavaScript API, automatically.
 
 Give it a binary name, it reads `--help`, and hands you back a fully typed object where subcommands are methods, flags are options, and everything just works.
 
