@@ -1,6 +1,6 @@
 {
   "name": "cli-to-js",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Turn any CLI tool into a Node.js API. Reverse commander.",
   "keywords": [
     "api",
