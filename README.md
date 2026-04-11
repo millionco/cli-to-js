@@ -25,9 +25,17 @@ const docker = await convertCliToJs("docker");
 await docker.build({ tag: `my-app:${commits[0].slice(0, 7)}`, file: "Dockerfile", _: ["."] });
 ```
 
-No manual wrappers. No codegen step. No config. One function call turns `git`, `docker`, `kubectl`, `ffmpeg`, or anything with `--help` into a typed, callable API. Compose them together with plain JavaScript.
+No manual wrappers. No codegen step. No config.
 
-**Why this matters for AI agents.** LLM-powered agents need to call CLI tools, but they work best with structured APIs, not raw shell strings. `cli-to-js` lets an agent introspect any binary on the system, get a typed interface, and call it safely. `$validate` catches hallucinated flag names before spawning a process and returns did-you-mean suggestions the agent can self-correct from in a single retry. `$spawn` returns a standard async iterator, so streaming and piping is just a `for await` loop, the most common JS pattern in any model's training data.
+One function call turns `git`, `docker`, `kubectl`, `ffmpeg`, or anything with `--help` into a typed, callable API. Compose them together with plain JavaScript.
+
+**Why this matters for AI agents.**
+
+LLM-powered agents need to call CLI tools, but they work best with structured APIs, not raw shell strings.
+
+`cli-to-js` lets an agent introspect any binary on the system, get a typed interface, and call it safely. `$validate` catches hallucinated flag names before spawning a process and returns did-you-mean suggestions the agent can self-correct from in a single retry.
+
+`$spawn` returns a standard async iterator, so streaming and piping is just a `for await` loop, the most common JS pattern in any model's training data.
 
 ## Install
 
