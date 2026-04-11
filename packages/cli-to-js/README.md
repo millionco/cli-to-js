@@ -2,7 +2,7 @@
 
 > **Warning:** This project is very experimental. APIs may change without notice.
 
-Turn any CLI into a JavaScript API — automatically. Give it a binary name, it reads `--help`, and hands you back a fully typed object where subcommands are methods, flags are options, and everything just works.
+Turn any CLI into a JavaScript API, automatically. Give it a binary name, it reads `--help`, and hands you back a fully typed object where subcommands are methods, flags are options, and everything just works.
 
 ```ts
 import { convertCliToJs } from "cli-to-js";
@@ -25,9 +25,9 @@ const docker = await convertCliToJs("docker");
 await docker.build({ tag: `my-app:${commits[0].slice(0, 7)}`, file: "Dockerfile", _: ["."] });
 ```
 
-No manual wrappers. No codegen step. No config. One function call turns `git`, `docker`, `kubectl`, `ffmpeg` — anything with `--help` — into a typed, callable API. Compose them together with plain JavaScript.
+No manual wrappers. No codegen step. No config. One function call turns `git`, `docker`, `kubectl`, `ffmpeg`, or anything with `--help` into a typed, callable API. Compose them together with plain JavaScript.
 
-**Built for AI agents.** Agents call CLIs dynamically but hallucinate flag names and forget required args. `$validate` catches mistakes before spawning a process, with did-you-mean suggestions an agent can self-correct from. `$spawn` returns a standard async iterator, so piping and streaming is just a `for await` loop — the most in-distribution JS pattern for any model.
+**Why this matters for AI agents.** LLM-powered agents need to call CLI tools, but they work best with structured APIs, not raw shell strings. `cli-to-js` lets an agent introspect any binary on the system, get a typed interface, and call it safely. `$validate` catches hallucinated flag names before spawning a process and returns did-you-mean suggestions the agent can self-correct from in a single retry. `$spawn` returns a standard async iterator, so streaming and piping is just a `for await` loop, the most common JS pattern in any model's training data.
 
 ## Install
 
@@ -66,7 +66,7 @@ Here's how JS option keys map to CLI flags:
 
 ## TypeScript
 
-The API is fully typed out of the box — every subcommand returns `Promise<CommandResult>`, and `$schema`, `$parse`, `$spawn` are all properly typed. No codegen needed.
+The API is fully typed out of the box. Every subcommand returns `Promise<CommandResult>`, and `$schema`, `$parse`, `$spawn` are all properly typed. No codegen needed.
 
 For per-subcommand option types, pass a generic:
 
@@ -121,11 +121,11 @@ console.log(commitSchema.flags);
 await git.$parse();
 ```
 
-Handles commander-style aliases (`init|setup`, `add|install`) — the primary name is used.
+Handles commander-style aliases (`init|setup`, `add|install`). The primary name is used.
 
 ## Validation
 
-Validate options against the parsed schema before running a command. Returns an array of structured errors — empty means valid.
+Validate options against the parsed schema before running a command. Returns an array of structured errors (empty means valid).
 
 ```ts
 const git = await convertCliToJs("git", { subcommands: true });
@@ -237,7 +237,7 @@ npx cli-to-js git --dts -o git.d.ts       # generate type declarations only
 npx cli-to-js git --json                   # dump raw schema as JSON
 ```
 
-The generated code is **standalone** — it embeds a tiny runtime (spawn + options-to-args) and has zero dependencies on `cli-to-js`. Drop it into any project and it just works.
+The generated code is **standalone**. It embeds a tiny runtime (spawn + options-to-args) and has zero dependencies on `cli-to-js`. Drop it into any project and it just works.
 
 ## API
 
@@ -286,7 +286,7 @@ The returned proxy is both callable and has subcommand methods:
 | `onStdout` | `(data: string) => void` | -        | Real-time stdout callback |
 | `onStderr` | `(data: string) => void` | -        | Real-time stderr callback |
 
-Color output (`FORCE_COLOR`, `CLICOLOR_FORCE`) is auto-detected — it's enabled when streaming callbacks are provided and the parent process is connected to a TTY. To force it manually, pass `env: { ...process.env, FORCE_COLOR: "1" }`.
+Color output (`FORCE_COLOR`, `CLICOLOR_FORCE`) is auto-detected. It's enabled when streaming callbacks are provided and the parent process is connected to a TTY. To force it manually, pass `env: { ...process.env, FORCE_COLOR: "1" }`.
 
 ### `CommandResult`
 
