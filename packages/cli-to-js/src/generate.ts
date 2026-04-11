@@ -1,5 +1,6 @@
 import type { CliSchema, ParsedFlag, ParsedSubcommand } from "./parse-help-text.js";
 import { kebabToCamel } from "./utils/kebab-to-camel.js";
+import { SHORT_FLAG_MAX_LENGTH } from "./constants.js";
 
 interface GenerateOptions {
   typescript?: boolean;
@@ -49,17 +50,26 @@ const formatSubcommandJsdoc = (
   return lines.join("\n");
 };
 
+const flagToTypeString = (flag: ParsedFlag): string => {
+  if (!flag.takesValue) return "boolean";
+  if (flag.choices && flag.choices.length > 0) {
+    return flag.choices.map((choice) => `"${choice}"`).join(" | ");
+  }
+  return "string";
+};
+
 const generateOptionsInterface = (interfaceName: string, flags: ParsedFlag[]): string => {
   const lines: string[] = [`interface ${interfaceName} {`];
 
   for (const flag of flags) {
     const propertyName = kebabToCamel(flag.longName);
-    const propertyType = flag.takesValue ? "string" : "boolean";
+    const propertyType = flagToTypeString(flag);
+    const optionalMarker = flag.isRequired ? "" : "?";
 
     if (flag.description) {
       lines.push(`  /** ${flag.description} */`);
     }
-    lines.push(`  ${propertyName}?: ${propertyType};`);
+    lines.push(`  ${propertyName}${optionalMarker}: ${propertyType};`);
   }
 
   lines.push(`  _?: string | string[];`);
@@ -98,7 +108,7 @@ const toArgs = (options${typeAnnotation("Record<string, unknown>")})${typeAnnota
     }
     const flag = key.startsWith("-")
       ? key
-      : key.length === 1
+      : key.length <= ${SHORT_FLAG_MAX_LENGTH}
         ? \`-\${key}\`
         : \`--\${key.replace(/([a-z0-9])([A-Z])/g, "$1-$2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2").toLowerCase()}\`;
     if (typeof value === "boolean") {

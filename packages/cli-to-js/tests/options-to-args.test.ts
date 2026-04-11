@@ -100,4 +100,46 @@ describe("optionsToArgs", () => {
   it("handles empty array values", () => {
     expect(optionsToArgs({ tags: [] })).toEqual([]);
   });
+
+  it("uses = for flags in equalsFlags set", () => {
+    const equalsFlags = new Set(["regexp"]);
+    expect(optionsToArgs({ regexp: "pattern" }, equalsFlags)).toEqual(["--regexp=pattern"]);
+  });
+
+  it("uses = for array values in equalsFlags set", () => {
+    const equalsFlags = new Set(["include"]);
+    expect(optionsToArgs({ include: ["*.ts", "*.js"] }, equalsFlags)).toEqual([
+      "--include=*.ts",
+      "--include=*.js",
+    ]);
+  });
+
+  it("does not use = for flags not in equalsFlags set", () => {
+    const equalsFlags = new Set(["regexp"]);
+    expect(optionsToArgs({ output: "file.txt" }, equalsFlags)).toEqual(["--output", "file.txt"]);
+  });
+
+  it("does not use = for boolean equals flags", () => {
+    const equalsFlags = new Set(["verbose"]);
+    expect(optionsToArgs({ verbose: true }, equalsFlags)).toEqual(["--verbose"]);
+  });
+
+  it("does not use = for false boolean equals flags", () => {
+    const equalsFlags = new Set(["verbose"]);
+    expect(optionsToArgs({ verbose: false }, equalsFlags)).toEqual([]);
+  });
+
+  it("handles values with special characters", () => {
+    expect(optionsToArgs({ pattern: "foo bar" })).toEqual(["--pattern", "foo bar"]);
+    expect(optionsToArgs({ regexp: "^test$" })).toEqual(["--regexp", "^test$"]);
+  });
+
+  it("handles values with equals signs", () => {
+    expect(optionsToArgs({ config: "key=value" })).toEqual(["--config", "key=value"]);
+  });
+
+  it("handles equals flag with empty string value", () => {
+    const equalsFlags = new Set(["include"]);
+    expect(optionsToArgs({ include: "" }, equalsFlags)).toEqual(["--include="]);
+  });
 });

@@ -30,9 +30,6 @@ export interface CommandProcess {
   [Symbol.asyncIterator](): AsyncIterableIterator<string>;
 }
 
-export const pickOutput = (result: CommandResult): string =>
-  result.stdout.trim() ? result.stdout : result.stderr;
-
 const shouldForceColor = (config: RunConfig): boolean =>
   Boolean(process.stdout.isTTY && (config.onStdout || config.onStderr));
 
@@ -41,9 +38,10 @@ const prepareSpawn = (
   subcommands: string[],
   options: Record<string, unknown>,
   config: RunConfig,
+  equalsFlags: Set<string> = new Set(),
 ): { allArgs: string[]; spawnOptions: SpawnOptions } => {
   const { timeout = COMMAND_TIMEOUT_MS, signal, cwd, env, stdio = "pipe" } = config;
-  const args = optionsToArgs(options);
+  const args = optionsToArgs(options, equalsFlags);
 
   let finalEnv = env;
   if (shouldForceColor(config)) {
@@ -69,8 +67,15 @@ export const runCommand = async (
   subcommands: string[],
   options: Record<string, unknown> = {},
   config: RunConfig = {},
+  equalsFlags: Set<string> = new Set(),
 ): Promise<CommandResult> => {
-  const { allArgs, spawnOptions } = prepareSpawn(binaryName, subcommands, options, config);
+  const { allArgs, spawnOptions } = prepareSpawn(
+    binaryName,
+    subcommands,
+    options,
+    config,
+    equalsFlags,
+  );
   const { onStdout, onStderr } = config;
 
   return new Promise((resolve, reject) => {
@@ -141,8 +146,15 @@ export const spawnCommand = (
   subcommands: string[],
   options: Record<string, unknown> = {},
   config: RunConfig = {},
+  equalsFlags: Set<string> = new Set(),
 ): CommandProcess => {
-  const { allArgs, spawnOptions } = prepareSpawn(binaryName, subcommands, options, config);
+  const { allArgs, spawnOptions } = prepareSpawn(
+    binaryName,
+    subcommands,
+    options,
+    config,
+    equalsFlags,
+  );
 
   const child = spawn(binaryName, allArgs, spawnOptions);
 

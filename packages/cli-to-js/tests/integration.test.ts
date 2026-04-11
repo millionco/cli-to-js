@@ -92,6 +92,16 @@ describe("react-grab", () => {
       expect(subcommandNames).not.toContain("update");
     });
 
+    it("preserves aliases on subcommands", () => {
+      const schema = parseHelpText("grab", REACT_GRAB_HELP);
+      const initCmd = schema.command.subcommands.find((subcmd) => subcmd.name === "init");
+      expect(initCmd!.aliases).toEqual(["setup"]);
+      const addCmd = schema.command.subcommands.find((subcmd) => subcmd.name === "add");
+      expect(addCmd!.aliases).toEqual(["install"]);
+      const removeCmd = schema.command.subcommands.find((subcmd) => subcmd.name === "remove");
+      expect(removeCmd!.aliases).toEqual([]);
+    });
+
     it("filters out help subcommand", () => {
       const schema = parseHelpText("grab", REACT_GRAB_HELP);
       const subcommandNames = schema.command.subcommands.map((subcmd) => subcmd.name);

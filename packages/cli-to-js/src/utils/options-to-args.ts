@@ -1,7 +1,10 @@
 import { camelToKebab } from "./camel-to-kebab.js";
 import { SHORT_FLAG_MAX_LENGTH } from "../constants.js";
 
-export const optionsToArgs = (options: Record<string, unknown>): string[] => {
+export const optionsToArgs = (
+  options: Record<string, unknown>,
+  equalsFlags: Set<string> = new Set(),
+): string[] => {
   const flagArgs: string[] = [];
   const positionalArgs: string[] = [];
 
@@ -19,16 +22,26 @@ export const optionsToArgs = (options: Record<string, unknown>): string[] => {
         ? `-${key}`
         : `--${camelToKebab(key)}`;
 
+    const useEqualsSeparator = equalsFlags.has(key);
+
     if (typeof value === "boolean") {
       if (value) {
         flagArgs.push(flagName);
       }
     } else if (Array.isArray(value)) {
       for (const item of value) {
-        flagArgs.push(flagName, String(item));
+        if (useEqualsSeparator) {
+          flagArgs.push(`${flagName}=${String(item)}`);
+        } else {
+          flagArgs.push(flagName, String(item));
+        }
       }
     } else if (value !== undefined && value !== null) {
-      flagArgs.push(flagName, String(value));
+      if (useEqualsSeparator) {
+        flagArgs.push(`${flagName}=${String(value)}`);
+      } else {
+        flagArgs.push(flagName, String(value));
+      }
     }
   }
 

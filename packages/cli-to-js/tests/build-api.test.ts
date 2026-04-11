@@ -16,12 +16,16 @@ const createTestSchema = (): CliSchema => ({
         valueName: null,
         defaultValue: null,
         isNegated: false,
+        isRequired: false,
+        choices: null,
+        usesEquals: false,
+        isGlobal: false,
       },
     ],
     positionalArgs: [],
     subcommands: [
-      { name: "hello", description: "Say hello" },
-      { name: "world", description: "Say world" },
+      { name: "hello", aliases: ["hi"], description: "Say hello" },
+      { name: "world", aliases: [], description: "Say world" },
     ],
   },
 });
@@ -54,6 +58,12 @@ describe("buildApi", () => {
   it("executes subcommand via property access", async () => {
     const api = buildApi("echo", createTestSchema());
     const result = await api.hello();
+    expect(result.stdout.trim()).toBe("hello");
+  });
+
+  it("resolves subcommand alias to primary name", async () => {
+    const api = buildApi("echo", createTestSchema());
+    const result = await api.hi();
     expect(result.stdout.trim()).toBe("hello");
   });
 
@@ -130,5 +140,38 @@ describe("buildApi", () => {
       }
       expect(lines[0]).toMatch(/\/tmp|\/private\/tmp/);
     });
+
+    it("resolves aliases in $spawn proxy", async () => {
+      const api = buildApi("echo", createTestSchema());
+      const proc = api.$spawn.hi();
+      const lines: string[] = [];
+      for await (const line of proc) {
+        lines.push(line);
+      }
+      expect(lines[0]).toBe("hello");
+    });
+  });
+
+  it("does not crash when accessing reserved properties", () => {
+    const api = buildApi("echo", createTestSchema());
+    expect(() => api.toString()).not.toThrow();
+    expect(() => api.valueOf()).not.toThrow();
+  });
+
+  it("returns consistent $schema across multiple accesses", () => {
+    const api = buildApi("echo", createTestSchema());
+    expect(api.$schema).toBe(api.$schema);
+  });
+
+  it("executes root command with no arguments", async () => {
+    const api = buildApi("echo", createTestSchema());
+    const result = await api();
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("handles subcommand names with hyphens", async () => {
+    const api = buildApi("echo", createTestSchema());
+    const result = await api["dry-run"]();
+    expect(result.stdout.trim()).toBe("dry-run");
   });
 });

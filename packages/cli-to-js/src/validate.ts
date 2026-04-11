@@ -4,10 +4,18 @@ import { kebabToCamel } from "./utils/kebab-to-camel.js";
 import { levenshteinDistance } from "./utils/levenshtein-distance.js";
 
 export interface ValidationError {
-  kind: "unknown-flag" | "type-mismatch" | "missing-positional" | "variadic-mismatch";
+  kind:
+    | "unknown-flag"
+    | "type-mismatch"
+    | "invalid-choice"
+    | "missing-required-flag"
+    | "missing-positional"
+    | "variadic-mismatch"
+    | "exclusive-conflict";
   name: string;
   message: string;
   suggestion?: string;
+  choices?: string[];
 }
 
 const findClosestFlag = (input: string, knownFlags: string[]): string | undefined => {
@@ -71,6 +79,35 @@ const validateFlags = (
         message: `Flag "${key}" is a boolean flag but received a string value.`,
       });
     }
+
+    if (matchedFlag.choices) {
+      const valuesToCheck = Array.isArray(value)
+        ? value.map(String)
+        : typeof value === "string"
+          ? [value]
+          : [];
+      for (const singleValue of valuesToCheck) {
+        if (!matchedFlag.choices.includes(singleValue)) {
+          errors.push({
+            kind: "invalid-choice",
+            name: key,
+            message: `Flag "${key}" received "${singleValue}" but must be one of: ${matchedFlag.choices.join(", ")}.`,
+            choices: matchedFlag.choices,
+          });
+        }
+      }
+    }
+  }
+
+  const requiredFlags = [...flagLookup.entries()].filter(([, flag]) => flag.isRequired);
+  for (const [camelName, flag] of requiredFlags) {
+    if (!(camelName in options)) {
+      errors.push({
+        kind: "missing-required-flag",
+        name: camelName,
+        message: `Required flag "${camelName}" (--${flag.longName}) is missing.`,
+      });
+    }
   }
 
   return errors;
@@ -115,6 +152,29 @@ const validatePositionals = (
   return errors;
 };
 
+const validateExclusiveGroups = (
+  options: Record<string, unknown>,
+  mutuallyExclusiveFlags: string[][],
+): ValidationError[] => {
+  const errors: ValidationError[] = [];
+  const providedKeys = new Set(Object.keys(options).filter((key) => key !== "_"));
+
+  for (const group of mutuallyExclusiveFlags) {
+    const camelGroup = group.map((flagName) => kebabToCamel(flagName));
+    const presentFlags = camelGroup.filter((camelName) => providedKeys.has(camelName));
+
+    if (presentFlags.length > 1) {
+      errors.push({
+        kind: "exclusive-conflict",
+        name: presentFlags.join(", "),
+        message: `Flags ${presentFlags.map((flagName) => `"${flagName}"`).join(" and ")} are mutually exclusive.`,
+      });
+    }
+  }
+
+  return errors;
+};
+
 export const validateOptions = (
   command: ParsedCommand,
   options: Record<string, unknown>,
@@ -123,5 +183,6 @@ export const validateOptions = (
   return [
     ...validateFlags(options, flagLookup),
     ...validatePositionals(options, command.positionalArgs),
+    ...validateExclusiveGroups(options, command.mutuallyExclusiveFlags ?? []),
   ];
 };
