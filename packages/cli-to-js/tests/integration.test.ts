@@ -2,7 +2,6 @@ import { describe, it, expect } from "vite-plus/test";
 import { fromHelpText } from "../src/index.js";
 import { parseHelpText } from "../src/parse-help-text.js";
 import { generate } from "../src/generate.js";
-import { buildApi } from "../src/build-api.js";
 
 const REACT_GRAB_HELP = `Usage: grab [options] [command]
 
