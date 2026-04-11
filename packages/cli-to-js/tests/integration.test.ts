@@ -34,36 +34,32 @@ Options:
   -h, --help       display help for command
 `;
 
-const REACT_DOCTOR_HELP = `Usage: react-doctor [options] [command] [directory]
+const REACT_DOCTOR_HELP = `Usage: react-doctor [options] [directory]
 
 Diagnose React codebase health
 
 Arguments:
-  directory                project directory to scan (default: ".")
+  directory          project directory to scan (default: ".")
 
 Options:
-  -v, --version            display the version number
-  --lint                   enable linting
-  --no-lint                skip linting
-  --dead-code              enable dead code detection
-  --no-dead-code           skip dead code detection
-  --verbose                show file details per rule
-  --score                  output only the score
-  -y, --yes                skip prompts, scan all workspace projects
-  --project <name>         select workspace project (comma-separated for
-                           multiple)
-  --diff [base]            scan only files changed vs base branch
-  --offline                skip telemetry (anonymous, not stored, only used to
-                           calculate score)
-  --ami                    enable Ami-related prompts
-  --fail-on <level>        exit with error code on diagnostics: error, warning,
-                           none (default: "none")
-  --fix                    open Ami to auto-fix all issues
-  -h, --help               display help for command
-
-Commands:
-  fix [directory]          Open Ami to auto-fix react-doctor issues
-  install-ami [directory]  Install Ami and open it to auto-fix issues
+  -v, --version      display the version number
+  --lint             enable linting
+  --no-lint          skip linting
+  --dead-code        enable dead code detection
+  --no-dead-code     skip dead code detection
+  --verbose          show file details per rule
+  --score            output only the score
+  -y, --yes          skip prompts, scan all workspace projects
+  -n, --no           skip prompts, always run a full scan (decline diff-only)
+  --project <name>   select workspace project (comma-separated for multiple)
+  --diff [base]      scan only files changed vs base branch
+  --offline          skip telemetry (anonymous, not stored, only used to
+                     calculate score)
+  --staged           scan only staged (git index) files for pre-commit hooks
+  --fail-on <level>  exit with error code on diagnostics: error, warning, none
+                     (default: "none")
+  --annotations      output diagnostics as GitHub Actions annotations
+  -h, --help         display help for command
 `;
 
 describe("react-grab", () => {
@@ -192,12 +188,13 @@ describe("react-doctor", () => {
       expect(flagNames).toContain("verbose");
       expect(flagNames).toContain("score");
       expect(flagNames).toContain("yes");
+      expect(flagNames).toContain("no");
       expect(flagNames).toContain("project");
       expect(flagNames).toContain("diff");
       expect(flagNames).toContain("offline");
-      expect(flagNames).toContain("ami");
+      expect(flagNames).toContain("staged");
       expect(flagNames).toContain("fail-on");
-      expect(flagNames).toContain("fix");
+      expect(flagNames).toContain("annotations");
     });
 
     it("detects negated flags", () => {
@@ -231,11 +228,9 @@ describe("react-doctor", () => {
       expect(failOnFlag!.defaultValue).toBe("none");
     });
 
-    it("extracts subcommands", () => {
+    it("has no subcommands", () => {
       const schema = parseHelpText("react-doctor", REACT_DOCTOR_HELP);
-      const subcommandNames = schema.command.subcommands.map((subcmd) => subcmd.name);
-      expect(subcommandNames).toContain("fix");
-      expect(subcommandNames).toContain("install-ami");
+      expect(schema.command.subcommands).toHaveLength(0);
     });
 
     it("handles short flag with value", () => {
@@ -252,8 +247,6 @@ describe("react-doctor", () => {
       const code = generate(schema);
 
       expect(code).toContain('const BINARY = "react-doctor"');
-      expect(code).toContain("export const fix");
-      expect(code).toContain("export const installAmi");
       expect(code).toContain("export const reactDoctor");
       expect(code).toContain("export default reactDoctor");
 
@@ -261,6 +254,8 @@ describe("react-doctor", () => {
       expect(code).toContain("lint?: boolean");
       expect(code).toContain("deadCode?: boolean");
       expect(code).toContain("verbose?: boolean");
+      expect(code).toContain("staged?: boolean");
+      expect(code).toContain("annotations?: boolean");
       expect(code).toContain("failOn?: string");
     });
 
@@ -270,7 +265,6 @@ describe("react-doctor", () => {
 
       expect(code).not.toContain("interface");
       expect(code).not.toContain(": Record<string, unknown>");
-      expect(code).toContain("export const fix");
       expect(code).toContain("export const reactDoctor");
     });
   });
@@ -280,7 +274,7 @@ describe("react-doctor", () => {
       const api = fromHelpText("react-doctor", REACT_DOCTOR_HELP);
 
       expect(api.$schema.binaryName).toBe("react-doctor");
-      expect(api.$schema.command.subcommands.length).toBe(2);
+      expect(api.$schema.command.subcommands.length).toBe(0);
       expect(api.$schema.command.flags.length).toBeGreaterThan(10);
     });
   });
@@ -347,7 +341,7 @@ describe("claude (live CLI)", () => {
     const response = await claude({
       print: true,
       model: "sonnet",
-      maxBudgetUsd: 0.01,
+      maxBudgetUsd: 0.05,
       _: ["respond with exactly the word: pong"],
     }).text();
 
@@ -362,7 +356,7 @@ describe("claude (live CLI)", () => {
       print: true,
       model: "sonnet",
       outputFormat: "json",
-      maxBudgetUsd: 0.01,
+      maxBudgetUsd: 0.05,
       _: ["respond with exactly: hello"],
     }).json<{ result: string }>();
 
