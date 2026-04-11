@@ -8,26 +8,24 @@ Turn any CLI into a JavaScript API, automatically. Give it a binary name, it rea
 import { convertCliToJs } from "cli-to-js";
 
 const git = await convertCliToJs("git");
+const claude = await convertCliToJs("claude");
 
-// git commit --message "initial commit" --all
-await git.commit({ message: "initial commit", all: true });
+// Get the files that changed in the last commit
+const { stdout } = await git.diff({ nameOnly: true, _: ["HEAD~1"] });
+const changedFiles = stdout.trim().split("\n");
 
-// git push --force
-await git.push({ force: true });
+// Ask Claude to review each changed file
+for (const file of changedFiles) {
+  const review = await claude({
+    print: true,
+    model: "sonnet",
+    _: [`Review ${file} for bugs and suggest fixes`],
+  });
 
-// git log --oneline main..HEAD
-const { stdout } = await git.log({ oneline: true, _: ["main..HEAD"] });
-const commits = stdout.trim().split("\n");
-
-const docker = await convertCliToJs("docker");
-
-// docker build --tag my-app:latest --file Dockerfile .
-await docker.build({ tag: `my-app:${commits[0].slice(0, 7)}`, file: "Dockerfile", _: ["."] });
+  if (review.stdout.includes("no issues")) continue;
+  console.log(`${file}:`, review.stdout);
+}
 ```
-
-No manual wrappers. No codegen step. No config.
-
-One function call turns `git`, `docker`, `kubectl`, `ffmpeg`, or anything with `--help` into a typed, callable API. Compose them together with plain JavaScript.
 
 **Why this matters for AI agents.**
 

@@ -1,6 +1,14 @@
 import { camelToKebab } from "./camel-to-kebab.js";
 import { SHORT_FLAG_MAX_LENGTH } from "../constants.js";
 
+// JS option key            → CLI output
+// { verbose: true }        → --verbose
+// { verbose: false }       → (omitted)
+// { output: "file.txt" }   → --output file.txt
+// { dryRun: true }         → --dry-run
+// { v: true }              → -v
+// { include: ["a", "b"] }  → --include a --include b
+// { _: ["file.txt"] }      → file.txt
 export const optionsToArgs = (
   options: Record<string, unknown>,
   equalsFlags: Set<string> = new Set(),
