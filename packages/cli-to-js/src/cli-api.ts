@@ -37,6 +37,10 @@ interface CliApiBase {
     (options?: Record<string, unknown>, config?: RunConfig): CommandProcess;
     (subcommand: string, options?: Record<string, unknown>, config?: RunConfig): CommandProcess;
   };
+  $command: { [key: string]: (options?: Record<string, unknown>) => string } & {
+    (options?: Record<string, unknown>): string;
+    (subcommand: string, options?: Record<string, unknown>): string;
+  };
 }
 
 type CliApi<

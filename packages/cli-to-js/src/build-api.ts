@@ -9,6 +9,7 @@ import {
 import { parseSubcommandHelp, enrichSubcommands } from "./parse-subcommands.js";
 import { validateOptions, type ValidationError } from "./validate.js";
 import { kebabToCamel } from "./utils/kebab-to-camel.js";
+import { toCommandString } from "./utils/to-command-string.js";
 import type { CliApi } from "./cli-api.js";
 
 const RESERVED_PROPERTIES = new Set([
@@ -137,6 +138,37 @@ export const buildApi = <
     });
   };
 
+  const buildCommandProxy = () => {
+    const commandRoot = (
+      subcommandOrOptions?: string | Record<string, unknown>,
+      maybeOptions?: Record<string, unknown>,
+    ): string => {
+      if (typeof subcommandOrOptions === "string") {
+        const resolvedName = resolveAlias(schema, subcommandOrOptions);
+        const effectiveEqualsFlags = getEqualsFlags(schema, resolvedName, rootEqualsFlags);
+        return toCommandString(
+          binaryName,
+          [resolvedName],
+          maybeOptions ?? {},
+          effectiveEqualsFlags,
+        );
+      }
+      return toCommandString(binaryName, [], subcommandOrOptions ?? {}, rootEqualsFlags);
+    };
+
+    return new Proxy(commandRoot, {
+      get(commandTarget, subProperty) {
+        if (typeof subProperty === "symbol") return Reflect.get(commandTarget, subProperty);
+        if (subProperty === "then") return undefined;
+
+        const resolvedName = resolveAlias(schema, subProperty);
+        const effectiveEqualsFlags = getEqualsFlags(schema, resolvedName, rootEqualsFlags);
+        return (options: Record<string, unknown> = {}): string =>
+          toCommandString(binaryName, [resolvedName], options, effectiveEqualsFlags);
+      },
+    });
+  };
+
   const handleValidate = (
     subcommandOrOptions?: string | Record<string, unknown>,
     maybeOptions?: Record<string, unknown>,
@@ -220,6 +252,7 @@ export const buildApi = <
       if (property === "$schema") return schema;
       if (property === "$validate") return handleValidate;
       if (property === "$spawn") return buildSpawnProxy();
+      if (property === "$command") return buildCommandProxy();
       if (property === "$parse") return handleParse;
       if (typeof property === "symbol") return Reflect.get(target, property);
       if (property === "then") return undefined;

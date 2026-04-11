@@ -35,6 +35,8 @@ export const fromHelpText = <
 export { parseHelpText } from "./parse-help-text.js";
 export { runCommand, spawnCommand } from "./exec.js";
 export { selectHelpOutput } from "./utils/best-help-text.js";
+export { toCommandString } from "./utils/to-command-string.js";
+export { script } from "./utils/script.js";
 export { loadSchema } from "./load-schema.js";
 export { parseSubcommandHelp, enrichSubcommands } from "./parse-subcommands.js";
 export { generate, generateTypes } from "./generate.js";
