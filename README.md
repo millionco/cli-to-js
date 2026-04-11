@@ -2,7 +2,7 @@
 
 > **Warning:** This project is very experimental. APIs may change without notice.
 
-Turn any CLI tool into a Node.js API. Parses `--help` output, maps flags to options objects, subcommands to methods.
+Turn any CLI into a JavaScript API — automatically. Give it a binary name, it reads `--help`, and hands you back a fully typed object where subcommands are methods, flags are options, and everything just works.
 
 ```ts
 import { convertCliToJs } from "cli-to-js";
@@ -14,7 +14,9 @@ await git.push({ force: true });
 await git.log({ oneline: true, _: ["main..HEAD"] });
 ```
 
-Flags become camelCase options. Subcommands become methods. Positional args go in `_`. Fully typed out of the box.
+No manual wrappers. No codegen step. No config. One function call turns `git`, `docker`, `kubectl`, `ffmpeg` — anything with `--help` — into a typed, callable API.
+
+**Built for AI agents.** Agents call CLIs dynamically but hallucinate flag names and forget required args. `$validate` catches mistakes before spawning a process, with did-you-mean suggestions an agent can self-correct from. `$spawn` returns a standard async iterator, so piping and streaming is just a `for await` loop — the most in-distribution JS pattern for any model.
 
 ## Install
 
@@ -109,6 +111,40 @@ await git.$parse();
 ```
 
 Handles commander-style aliases (`init|setup`, `add|install`) — the primary name is used.
+
+## Validation
+
+Validate options against the parsed schema before running a command. Returns an array of structured errors — empty means valid.
+
+```ts
+const git = await convertCliToJs("git", { subcommands: true });
+
+const errors = git.$validate("commit", { massage: "fix typo" });
+// => [{ kind: "unknown-flag", name: "massage", suggestion: "message",
+//       message: 'Unknown flag "massage". Did you mean "message"?' }]
+
+if (errors.length === 0) {
+  await git.commit({ message: "fix typo" });
+}
+```
+
+Checks for unknown flags (with Levenshtein-based suggestions), type mismatches (boolean vs value-taking), missing required positionals, and too many positionals.
+
+For root command validation, pass options directly:
+
+```ts
+const errors = git.$validate({ unknownFlag: true });
+```
+
+For subcommand validation, the subcommand must be enriched first (via `subcommands: true` or `$parse("name")`).
+
+Or use `validateOptions` directly with any `ParsedCommand`:
+
+```ts
+import { validateOptions } from "cli-to-js";
+
+const errors = validateOptions(schema.command, { verbose: "wrong" });
+```
 
 ## Streaming
 
@@ -221,6 +257,8 @@ The returned proxy is both callable and has subcommand methods:
 | `api("sub", { flag: val })`      | Run subcommand by name                 |
 | `api({ flag: val })`             | Run root command                       |
 | `api.$schema`                    | Parsed `CliSchema`                     |
+| `api.$validate(opts)`            | Validate options against root schema   |
+| `api.$validate("sub", opts)`     | Validate options against subcommand    |
 | `api.$spawn.sub(opts)`           | Spawn subcommand, get `CommandProcess` |
 | `api.$parse("sub")`              | Lazily parse a subcommand's help text  |
 | `api.$parse()`                   | Parse all subcommand help texts        |
@@ -255,6 +293,7 @@ Returned by `spawnCommand` and `$spawn`:
 
 ```ts
 interface CommandProcess {
+  stdin: Writable | null;
   stdout: Readable | null;
   stderr: Readable | null;
   pid: number | undefined;

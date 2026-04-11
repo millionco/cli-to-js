@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vite-plus/test";
 import { validateOptions } from "../src/validate.js";
-import type { ParsedCommand } from "../src/parse-help-text.js";
+import { buildApi } from "../src/build-api.js";
+import type { CliSchema, ParsedCommand } from "../src/parse-help-text.js";
 
 const createTestCommand = (): ParsedCommand => ({
   name: "test-cli",
@@ -162,5 +163,103 @@ describe("validateOptions", () => {
     const kinds = errors.map((error) => error.kind);
     expect(kinds).toContain("unknown-flag");
     expect(kinds).toContain("type-mismatch");
+  });
+
+  it("detects too many positionals when none are variadic", () => {
+    const command: ParsedCommand = {
+      ...createTestCommand(),
+      positionalArgs: [{ name: "file", required: true, variadic: false }],
+    };
+    const errors = validateOptions(command, { _: ["a.txt", "b.txt", "c.txt"] });
+    const variadicErrors = errors.filter((error) => error.kind === "variadic-mismatch");
+    expect(variadicErrors).toHaveLength(1);
+    expect(variadicErrors[0].message).toContain("at most 1");
+    expect(variadicErrors[0].message).toContain("received 3");
+  });
+
+  it("allows extra positionals when a variadic arg exists", () => {
+    const errors = validateOptions(createTestCommand(), {
+      _: ["src", "dst", "extra1", "extra2"],
+    });
+    const variadicErrors = errors.filter((error) => error.kind === "variadic-mismatch");
+    expect(variadicErrors).toHaveLength(0);
+  });
+});
+
+const createSchemaWithSubcommands = (): CliSchema => ({
+  binaryName: "echo",
+  command: {
+    name: "echo",
+    description: "Print arguments",
+    flags: [
+      {
+        longName: "newline",
+        shortName: "-n",
+        description: "Do not output trailing newline",
+        takesValue: false,
+        valueName: null,
+        defaultValue: null,
+        isNegated: false,
+      },
+    ],
+    positionalArgs: [],
+    subcommands: [
+      {
+        name: "greet",
+        description: "Say hello",
+        flags: [
+          {
+            longName: "name",
+            shortName: null,
+            description: "Name to greet",
+            takesValue: true,
+            valueName: "name",
+            defaultValue: null,
+            isNegated: false,
+          },
+        ],
+        positionalArgs: [],
+      },
+      { name: "unenriched", description: "Not enriched yet" },
+    ],
+  },
+});
+
+describe("$validate integration via buildApi", () => {
+  it("validates root command options", () => {
+    const api = buildApi("echo", createSchemaWithSubcommands());
+    const errors = api.$validate({ newline: true });
+    expect(errors).toEqual([]);
+  });
+
+  it("detects unknown flags on root command", () => {
+    const api = buildApi("echo", createSchemaWithSubcommands());
+    const errors = api.$validate({ bogus: "value" });
+    expect(errors).toHaveLength(1);
+    expect(errors[0].kind).toBe("unknown-flag");
+  });
+
+  it("validates enriched subcommand options", () => {
+    const api = buildApi("echo", createSchemaWithSubcommands());
+    const errors = api.$validate("greet", { name: "world" });
+    expect(errors).toEqual([]);
+  });
+
+  it("detects unknown flags on enriched subcommand", () => {
+    const api = buildApi("echo", createSchemaWithSubcommands());
+    const errors = api.$validate("greet", { nme: "world" });
+    expect(errors).toHaveLength(1);
+    expect(errors[0].kind).toBe("unknown-flag");
+    expect(errors[0].suggestion).toBe("name");
+  });
+
+  it("throws for unknown subcommand name", () => {
+    const api = buildApi("echo", createSchemaWithSubcommands());
+    expect(() => api.$validate("nonexistent", {})).toThrow("Unknown subcommand");
+  });
+
+  it("throws for subcommand that has not been enriched with flags", () => {
+    const api = buildApi("echo", createSchemaWithSubcommands());
+    expect(() => api.$validate("unenriched", {})).toThrow("has not been enriched");
   });
 });

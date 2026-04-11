@@ -1,5 +1,7 @@
 import type { ParsedCommand, ParsedFlag, ParsedPositionalArg } from "./parse-help-text.js";
 import { MAX_SUGGESTION_DISTANCE } from "./constants.js";
+import { kebabToCamel } from "./utils/kebab-to-camel.js";
+import { levenshteinDistance } from "./utils/levenshtein-distance.js";
 
 export interface ValidationError {
   kind: "unknown-flag" | "type-mismatch" | "missing-positional" | "variadic-mismatch";
@@ -7,38 +9,6 @@ export interface ValidationError {
   message: string;
   suggestion?: string;
 }
-
-const kebabToCamel = (input: string): string =>
-  input.replace(/-([a-z])/g, (_match, character: string) => character.toUpperCase());
-
-const levenshteinDistance = (source: string, target: string): number => {
-  const sourceLength = source.length;
-  const targetLength = target.length;
-
-  if (sourceLength === 0) return targetLength;
-  if (targetLength === 0) return sourceLength;
-
-  const matrix: number[][] = Array.from({ length: sourceLength + 1 }, () =>
-    Array.from<number>({ length: targetLength + 1 }).fill(0),
-  );
-
-  for (let rowIndex = 0; rowIndex <= sourceLength; rowIndex++) matrix[rowIndex][0] = rowIndex;
-  for (let columnIndex = 0; columnIndex <= targetLength; columnIndex++)
-    matrix[0][columnIndex] = columnIndex;
-
-  for (let rowIndex = 1; rowIndex <= sourceLength; rowIndex++) {
-    for (let columnIndex = 1; columnIndex <= targetLength; columnIndex++) {
-      const substitutionCost = source[rowIndex - 1] === target[columnIndex - 1] ? 0 : 1;
-      matrix[rowIndex][columnIndex] = Math.min(
-        matrix[rowIndex - 1][columnIndex] + 1,
-        matrix[rowIndex][columnIndex - 1] + 1,
-        matrix[rowIndex - 1][columnIndex - 1] + substitutionCost,
-      );
-    }
-  }
-
-  return matrix[sourceLength][targetLength];
-};
 
 const findClosestFlag = (input: string, knownFlags: string[]): string | undefined => {
   let bestMatch: string | undefined;
@@ -83,7 +53,7 @@ const validateFlags = (
         kind: "unknown-flag",
         name: key,
         message: `Unknown flag "${key}".${suggestionText}`,
-        suggestion: suggestion ?? undefined,
+        suggestion,
       });
       continue;
     }
@@ -132,31 +102,14 @@ const validatePositionals = (
     }
   }
 
-  for (
-    let index = 0;
-    index < positionalArgs.length && index < providedPositionals.length;
-    index++
-  ) {
-    const positionalArg = positionalArgs[index];
-    if (!positionalArg.variadic && Array.isArray(options._)) {
-      const remainingNonVariadic = positionalArgs
-        .slice(index)
-        .filter((innerArg) => !innerArg.variadic);
+  const hasVariadicArg = positionalArgs.some((positionalArg) => positionalArg.variadic);
 
-      if (
-        remainingNonVariadic.length > 0 &&
-        index === positionalArgs.length - 1 &&
-        !positionalArg.variadic &&
-        providedPositionals.length > positionalArgs.length
-      ) {
-        errors.push({
-          kind: "variadic-mismatch",
-          name: positionalArg.name,
-          message: `Positional argument "${positionalArg.name}" is not variadic but received multiple values.`,
-        });
-        break;
-      }
-    }
+  if (!hasVariadicArg && providedPositionals.length > positionalArgs.length) {
+    errors.push({
+      kind: "variadic-mismatch",
+      name: positionalArgs.length > 0 ? positionalArgs[positionalArgs.length - 1].name : "_",
+      message: `Expected at most ${positionalArgs.length} positional argument(s) but received ${providedPositionals.length}.`,
+    });
   }
 
   return errors;

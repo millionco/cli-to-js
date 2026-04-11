@@ -99,15 +99,23 @@ export const buildApi = <
       const subcommand = schema.command.subcommands.find(
         (innerSubcommand) => innerSubcommand.name === subcommandOrOptions,
       );
-      const command: ParsedCommand = subcommand?.flags
-        ? {
-            name: subcommand.name,
-            description: subcommand.description,
-            flags: subcommand.flags,
-            positionalArgs: subcommand.positionalArgs ?? [],
-            subcommands: [],
-          }
-        : schema.command;
+      if (!subcommand) {
+        throw new Error(
+          `Unknown subcommand "${subcommandOrOptions}". Call $parse("${subcommandOrOptions}") first or pass { subcommands: true } to convertCliToJs.`,
+        );
+      }
+      if (!subcommand.flags) {
+        throw new Error(
+          `Subcommand "${subcommandOrOptions}" has not been enriched with flags. Call $parse("${subcommandOrOptions}") first.`,
+        );
+      }
+      const command: ParsedCommand = {
+        name: subcommand.name,
+        description: subcommand.description,
+        flags: subcommand.flags,
+        positionalArgs: subcommand.positionalArgs ?? [],
+        subcommands: [],
+      };
       return validateOptions(command, maybeOptions ?? {});
     }
     return validateOptions(schema.command, subcommandOrOptions ?? {});

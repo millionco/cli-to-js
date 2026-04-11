@@ -1,4 +1,5 @@
 import type { CliSchema, ParsedFlag, ParsedSubcommand } from "./parse-help-text.js";
+import { kebabToCamel } from "./utils/kebab-to-camel.js";
 
 interface GenerateOptions {
   typescript?: boolean;
@@ -14,9 +15,6 @@ const toPascalCase = (name: string): string => {
   const identifier = toIdentifier(name);
   return identifier.charAt(0).toUpperCase() + identifier.slice(1);
 };
-
-const kebabToCamel = (input: string): string =>
-  input.replace(/-([a-z])/g, (_match, character: string) => character.toUpperCase());
 
 const formatFlagComment = (flag: ParsedFlag): string => {
   const nameParts = [];
