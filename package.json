@@ -3,12 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vp run cli-to-js#build",
+    "build": "pnpm -r build",
     "fmt": "vp fmt",
     "lint": "vp lint",
     "check": "vp check",
-    "test": "vp run cli-to-js#test",
-    "typecheck": "vp run cli-to-js#typecheck",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
     "changeset": "changeset",
     "version": "changeset version",
     "release": "pnpm build && changeset publish"
