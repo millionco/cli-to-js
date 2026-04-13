@@ -1,0 +1,2 @@
+export const DEFAULT_PORT = 3456;
+export const SSE_HEARTBEAT_INTERVAL_MS = 15_000;

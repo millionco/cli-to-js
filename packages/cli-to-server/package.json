@@ -1,0 +1,61 @@
+{
+  "name": "cli-to-server",
+  "version": "0.0.1",
+  "description": "Turn any CLI tool into an HTTP server with Hono. Wraps cli-to-js.",
+  "keywords": [
+    "api",
+    "cli",
+    "hono",
+    "http",
+    "rest",
+    "server",
+    "wrapper"
+  ],
+  "homepage": "https://github.com/aidenybai/cli-to-js",
+  "bugs": {
+    "url": "https://github.com/aidenybai/cli-to-js/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Aiden Bai",
+    "email": "aiden@million.dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aidenybai/cli-to-js.git"
+  },
+  "bin": {
+    "cli-to-server": "./dist/cli.mjs"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vp test run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.1",
+    "cli-to-js": "workspace:*",
+    "commander": "^14.0.3",
+    "hono": "^4.7.10"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

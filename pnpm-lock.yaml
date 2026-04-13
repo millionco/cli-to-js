@@ -30,6 +30,21 @@ importers:
         specifier: ^14.0.3
         version: 14.0.3
 
+  packages/cli-to-server:
+    dependencies:
+      '@hono/node-server':
+        specifier: ^1.14.1
+        version: 1.19.14(hono@4.12.12)
+      cli-to-js:
+        specifier: workspace:*
+        version: link:../cli-to-js
+      commander:
+        specifier: ^14.0.3
+        version: 14.0.3
+      hono:
+        specifier: ^4.7.10
+        version: 4.12.12
+
   packages/js-to-cli:
     dependencies:
       commander:
@@ -111,6 +126,12 @@ packages:
 
   '@emnapi/wasi-threads@1.2.1':
     resolution: {integrity: sha512-uTII7OYF+/Mes/MrcIOYp5yOtSMLBWSIoLPpcgwipoiKbli6k322tcoFsxoIIxPDqW01SQGAgko4EzZi2BNv2w==}
+
+  '@hono/node-server@1.19.14':
+    resolution: {integrity: sha512-GwtvgtXxnWsucXvbQXkRgqksiH2Qed37H9xHZocE5sA3N8O8O8/8FA3uclQXxXVzc9XBZuEOMK7+r02FmSpHtw==}
+    engines: {node: '>=18.14.1'}
+    peerDependencies:
+      hono: ^4
 
   '@inquirer/external-editor@1.0.3':
     resolution: {integrity: sha512-RWbSrDiYmO4LbejWY7ttpxczuwQyZLBUyygsA9Nsv95hpzUWwnNTVQmAq3xuh7vNwCp07UTmE5i11XAEExx4RA==}
@@ -808,6 +829,10 @@ packages:
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
 
+  hono@4.12.12:
+    resolution: {integrity: sha512-p1JfQMKaceuCbpJKAPKVqyqviZdS0eUxH9v82oWo1kb9xjQ5wA6iP3FNVAPDFlz5/p7d45lO+BpSk1tuSZMF4Q==}
+    engines: {node: '>=16.9.0'}
+
   human-id@4.1.3:
     resolution: {integrity: sha512-tsYlhAYpjCKa//8rXZ9DqKEawhPoSytweBC2eNvcaDK+57RZLHGqNs3PZTQO6yekLFSuvA6AlnAfrw1uBvtb+Q==}
     hasBin: true
@@ -1426,6 +1451,10 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
+  '@hono/node-server@1.19.14(hono@4.12.12)':
+    dependencies:
+      hono: 4.12.12
+
   '@inquirer/external-editor@1.0.3(@types/node@25.6.0)':
     dependencies:
       chardet: 2.1.1
@@ -1862,6 +1891,8 @@ snapshots:
       slash: 3.0.0
 
   graceful-fs@4.2.11: {}
+
+  hono@4.12.12: {}
 
   human-id@4.1.3: {}
 
