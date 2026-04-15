@@ -1,6 +1,6 @@
 {
   "name": "cli-to-server",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Turn any CLI tool into an HTTP server with Hono. Wraps cli-to-js.",
   "keywords": [
     "api",
@@ -46,7 +46,6 @@
   "scripts": {
     "build": "vp pack",
     "dev": "vp pack --watch",
-    "test": "vp test run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

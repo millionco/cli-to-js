@@ -1,6 +1,6 @@
 {
   "name": "js-to-cli",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Turn any Node.js module into a Commander CLI. Inverse of cli-to-js.",
   "keywords": [
     "cli",

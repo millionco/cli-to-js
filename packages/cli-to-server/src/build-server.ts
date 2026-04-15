@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { streamSSE } from "hono/streaming";
 import type { CliApi, CommandResult } from "cli-to-js";
 import { SSE_HEARTBEAT_INTERVAL_MS } from "./constants.js";
@@ -119,10 +119,7 @@ export const buildServer = (cliApi: CliApi): Hono => {
     });
   });
 
-  const handleExecution = async (
-    context: Parameters<Parameters<typeof app.post>[1]>[0],
-    subcommand: string | undefined,
-  ) => {
+  const handleExecution = async (context: Context, subcommand: string | undefined) => {
     const body = await parseBodySafe(context.req.raw);
     const format = resolveFormat(context.req.query("format"), context.req.header("accept"));
 
