@@ -94,6 +94,64 @@ Or generate a `.d.ts` from the parsed schema:
 npx cli-to-js git --dts --subcommands -o git.d.ts
 ```
 
+## TypeScript plugin (automatic types in your editor)
+
+If you don't want to pass a generic or check in a `.d.ts`, register the bundled TypeScript language-service plugin. It runs inside `tsserver`, scans your source for `convertCliToJs("<literal>")` and `fromHelpText("<literal>", ...)` calls, runs each binary's `--help` in the background, and injects real types — zero codegen, zero generic.
+
+```jsonc
+// tsconfig.json
+{
+  "compilerOptions": {
+    "plugins": [{ "name": "cli-to-js/plugin" }],
+  },
+}
+```
+
+```ts
+import { convertCliToJs } from "cli-to-js";
+
+const git = await convertCliToJs("git"); // ← plugin augments the return type
+await git.commit({ message: "hi" }); //   ← flags autocomplete, unknown keys error
+```
+
+VS Code picks this up automatically. Other editors may need to be told to use the workspace TypeScript version.
+
+### Configuration
+
+```jsonc
+{
+  "plugins": [
+    {
+      "name": "cli-to-js/plugin",
+      "disabled": false, // kill switch
+      "timeout": 3000, // ms to wait for `<bin> --help`
+      "helpFlag": "--help", // override per workspace if needed
+      "allowList": ["git", "claude"], // only resolve these binaries
+      "denyList": ["rm"], // never resolve these
+    },
+  ],
+}
+```
+
+Set `CLI_TO_JS_PLUGIN_DISABLE=1` in the environment to disable it globally.
+
+### How it compares
+
+|                           | generic           | `--dts` codegen | plugin         |
+| ------------------------- | ----------------- | --------------- | -------------- |
+| Editor autocomplete       | ✅ (you write it) | ✅              | ✅ (automatic) |
+| `tsc` / CI type-checking  | ✅                | ✅              | ❌ editor only |
+| Manual step               | write types       | run codegen     | none           |
+| Stays in sync with binary | manual            | re-run codegen  | automatic      |
+
+The plugin is the best DX during development. For CI builds, still use `--dts` or the generic — `tsc` does not run TypeScript language-service plugins.
+
+### Limits
+
+- Only string-literal binary names are resolved: `convertCliToJs("git")` works, `convertCliToJs(binaryFromVar)` falls back to the loose default type.
+- First paint shows the loose type for a moment while `<bin> --help` runs in the background, then upgrades.
+- The plugin spawns the binaries it finds in your source. Use `allowList`/`denyList` if that matters for your environment.
+
 ## From a help text string
 
 If you already have the help text, skip the binary lookup:

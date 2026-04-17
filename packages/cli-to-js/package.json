@@ -38,6 +38,11 @@
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
     },
+    "./plugin": {
+      "types": "./dist/plugin/index.d.cts",
+      "require": "./dist/plugin/index.cjs",
+      "default": "./dist/plugin/index.cjs"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -51,6 +56,17 @@
   },
   "dependencies": {
     "commander": "^14.0.3"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.9"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=18"
