@@ -17,7 +17,13 @@ export interface ConvertCliToJs {
   <N extends keyof KnownCliOptions & string>(
     binaryName: N,
     options?: CliToJsOptions,
-  ): Promise<CliApi<KnownCliOptions[N] & Record<string, Record<string, unknown>>>>;
+  ): Promise<
+    CliApi<
+      KnownCliOptions[N] extends Record<string, Record<string, unknown>>
+        ? KnownCliOptions[N]
+        : Record<string, Record<string, unknown>>
+    >
+  >;
   <T extends Record<string, Record<string, unknown>> = Record<string, Record<string, unknown>>>(
     binaryName: string,
     options?: CliToJsOptions,
@@ -29,7 +35,11 @@ export interface FromHelpText {
     binaryName: N,
     helpText: string,
     options?: CliToJsOptions,
-  ): CliApi<KnownCliOptions[N] & Record<string, Record<string, unknown>>>;
+  ): CliApi<
+    KnownCliOptions[N] extends Record<string, Record<string, unknown>>
+      ? KnownCliOptions[N]
+      : Record<string, Record<string, unknown>>
+  >;
   <T extends Record<string, Record<string, unknown>> = Record<string, Record<string, unknown>>>(
     binaryName: string,
     helpText: string,

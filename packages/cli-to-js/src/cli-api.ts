@@ -9,17 +9,11 @@ interface CommandPromise extends Promise<CommandResult> {
 }
 
 interface SubcommandFn<TOptions = Record<string, unknown>> {
-  (
-    options?: TOptions & { _?: string | string[]; [key: string]: unknown },
-    config?: RunConfig,
-  ): CommandPromise;
+  (options?: TOptions & { _?: string | string[] }, config?: RunConfig): CommandPromise;
 }
 
 interface SpawnFn<TOptions = Record<string, unknown>> {
-  (
-    options?: TOptions & { _?: string | string[]; [key: string]: unknown },
-    config?: RunConfig,
-  ): CommandProcess;
+  (options?: TOptions & { _?: string | string[] }, config?: RunConfig): CommandProcess;
 }
 
 interface CliApiBase {
