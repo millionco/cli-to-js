@@ -1,4 +1,7 @@
 import * as path from "node:path";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as crypto from "node:crypto";
 import type { server, LanguageService } from "typescript";
 import type { CliSchema } from "../parse-help-text.js";
 import { scanCliCalls } from "./scan.js";
@@ -18,8 +21,10 @@ interface BinaryCacheEntry extends BinaryResolution {
   helpFlag: string;
 }
 
-const VIRTUAL_FILE_NAME = "__cli-to-js-plugin__.d.ts";
 const SUPPRESS_ENV_VAR = "CLI_TO_JS_PLUGIN_DISABLE";
+
+const projectHash = (projectDirectory: string): string =>
+  crypto.createHash("sha1").update(projectDirectory).digest("hex").slice(0, 16);
 
 const pluginInit: server.PluginModuleFactory = ({ typescript: tsModule }) => {
   return {
@@ -36,61 +41,38 @@ const pluginInit: server.PluginModuleFactory = ({ typescript: tsModule }) => {
       const denyList = rawConfig.denyList ? new Set(rawConfig.denyList) : null;
 
       const projectDirectory = info.project.getCurrentDirectory();
-      const virtualFilePath = path.resolve(projectDirectory, VIRTUAL_FILE_NAME);
+      const virtualDirectory = path.join(
+        os.tmpdir(),
+        "cli-to-js-plugin",
+        projectHash(projectDirectory),
+      );
+      const virtualFilePath = path.join(virtualDirectory, "augmentations.d.ts");
 
       const binaryCache = new Map<string, BinaryCacheEntry>();
       const inflightResolutions = new Map<string, Promise<void>>();
-      let virtualFileContent = buildCurrentContent(binaryCache);
-      let virtualFileVersion = 0;
+      let lastWrittenContent = "";
       let lastScanSignature = "";
       let debounceHandle: NodeJS.Timeout | null = null;
 
-      const host = info.languageServiceHost;
+      try {
+        fs.mkdirSync(virtualDirectory, { recursive: true });
+        const initialContent = buildCurrentContent(binaryCache);
+        fs.writeFileSync(virtualFilePath, initialContent);
+        lastWrittenContent = initialContent;
+      } catch (initError) {
+        info.project.projectService.logger.info(
+          `cli-to-js/plugin could not create augmentations file: ${String(initError)}`,
+        );
+        return info.languageService;
+      }
 
+      const host = info.languageServiceHost;
       const originalGetScriptFileNames = host.getScriptFileNames.bind(host);
       host.getScriptFileNames = () => {
         const existing = originalGetScriptFileNames();
         if (existing.includes(virtualFilePath)) return existing;
         return [...existing, virtualFilePath];
       };
-
-      const originalGetScriptSnapshot = host.getScriptSnapshot.bind(host);
-      host.getScriptSnapshot = (fileName) => {
-        if (fileName === virtualFilePath) {
-          return tsModule.ScriptSnapshot.fromString(virtualFileContent);
-        }
-        return originalGetScriptSnapshot(fileName);
-      };
-
-      const originalGetScriptVersion = host.getScriptVersion.bind(host);
-      host.getScriptVersion = (fileName) => {
-        if (fileName === virtualFilePath) return String(virtualFileVersion);
-        return originalGetScriptVersion(fileName);
-      };
-
-      const originalGetScriptKind = host.getScriptKind?.bind(host);
-      if (originalGetScriptKind) {
-        host.getScriptKind = (fileName) => {
-          if (fileName === virtualFilePath) return tsModule.ScriptKind.TS;
-          return originalGetScriptKind(fileName);
-        };
-      }
-
-      const originalFileExists = host.fileExists?.bind(host);
-      if (originalFileExists) {
-        host.fileExists = (fileName) => {
-          if (fileName === virtualFilePath) return true;
-          return originalFileExists(fileName);
-        };
-      }
-
-      const originalReadFile = host.readFile?.bind(host);
-      if (originalReadFile) {
-        host.readFile = (fileName, encoding) => {
-          if (fileName === virtualFilePath) return virtualFileContent;
-          return originalReadFile(fileName, encoding);
-        };
-      }
 
       const isBinaryPermitted = (binaryName: string): boolean => {
         if (denyList?.has(binaryName)) return false;
@@ -100,9 +82,16 @@ const pluginInit: server.PluginModuleFactory = ({ typescript: tsModule }) => {
 
       const refreshVirtualFile = (): void => {
         const nextContent = buildCurrentContent(binaryCache);
-        if (nextContent === virtualFileContent) return;
-        virtualFileContent = nextContent;
-        virtualFileVersion += 1;
+        if (nextContent === lastWrittenContent) return;
+        try {
+          fs.writeFileSync(virtualFilePath, nextContent);
+          lastWrittenContent = nextContent;
+        } catch (writeError) {
+          info.project.projectService.logger.info(
+            `cli-to-js/plugin could not update augmentations file: ${String(writeError)}`,
+          );
+          return;
+        }
         info.project.refreshDiagnostics();
       };
 

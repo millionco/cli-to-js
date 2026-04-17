@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { parseHelpText, type CliSchema } from "../parse-help-text.js";
+import { enrichSubcommands } from "../parse-subcommands.js";
 import { selectHelpOutput } from "../utils/best-help-text.js";
 import { PLUGIN_RESOLVE_TIMEOUT_MS } from "../constants.js";
 
@@ -71,6 +72,9 @@ export const resolveBinarySchema = async (
       };
     }
     const schema = parseHelpText(binaryName, helpText);
+    if (schema.command.subcommands.length > 0) {
+      await enrichSubcommands(binaryName, schema, { timeout: timeoutMs });
+    }
     return {
       status: "ready",
       schema,
