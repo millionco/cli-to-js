@@ -29,6 +29,10 @@ importers:
       commander:
         specifier: ^14.0.3
         version: 14.0.3
+    devDependencies:
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
 
   packages/cli-to-server:
     dependencies:

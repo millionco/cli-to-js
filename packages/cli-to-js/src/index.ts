@@ -11,7 +11,43 @@ export interface CliToJsOptions {
   subcommands?: boolean;
 }
 
-export const convertCliToJs = async <
+export interface KnownCliOptions {}
+
+export interface ConvertCliToJs {
+  <N extends keyof KnownCliOptions & string>(
+    binaryName: N,
+    options?: CliToJsOptions,
+  ): Promise<
+    CliApi<
+      KnownCliOptions[N] extends Record<string, Record<string, unknown>>
+        ? KnownCliOptions[N]
+        : Record<string, Record<string, unknown>>
+    >
+  >;
+  <T extends Record<string, Record<string, unknown>> = Record<string, Record<string, unknown>>>(
+    binaryName: string,
+    options?: CliToJsOptions,
+  ): Promise<CliApi<T>>;
+}
+
+export interface FromHelpText {
+  <N extends keyof KnownCliOptions & string>(
+    binaryName: N,
+    helpText: string,
+    options?: CliToJsOptions,
+  ): CliApi<
+    KnownCliOptions[N] extends Record<string, Record<string, unknown>>
+      ? KnownCliOptions[N]
+      : Record<string, Record<string, unknown>>
+  >;
+  <T extends Record<string, Record<string, unknown>> = Record<string, Record<string, unknown>>>(
+    binaryName: string,
+    helpText: string,
+    options?: CliToJsOptions,
+  ): CliApi<T>;
+}
+
+export const convertCliToJs: ConvertCliToJs = async <
   T extends Record<string, Record<string, unknown>> = Record<string, Record<string, unknown>>,
 >(
   binaryName: string,
@@ -21,7 +57,7 @@ export const convertCliToJs = async <
   return buildApi<T>(binaryName, schema, { cwd: options.cwd, env: options.env });
 };
 
-export const fromHelpText = <
+export const fromHelpText: FromHelpText = <
   T extends Record<string, Record<string, unknown>> = Record<string, Record<string, unknown>>,
 >(
   binaryName: string,

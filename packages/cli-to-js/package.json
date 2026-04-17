@@ -29,6 +29,7 @@
   },
   "files": [
     "dist",
+    "plugin",
     "README.md"
   ],
   "type": "module",
@@ -37,6 +38,11 @@
     ".": {
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
+    },
+    "./plugin": {
+      "types": "./plugin/index.d.ts",
+      "require": "./plugin/index.js",
+      "default": "./plugin/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -51,6 +57,17 @@
   },
   "dependencies": {
     "commander": "^14.0.3"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.9"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=18"
