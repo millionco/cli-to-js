@@ -29,6 +29,7 @@
   },
   "files": [
     "dist",
+    "plugin",
     "README.md"
   ],
   "type": "module",
@@ -39,9 +40,9 @@
       "import": "./dist/index.mjs"
     },
     "./plugin": {
-      "types": "./dist/plugin/index.d.cts",
-      "require": "./dist/plugin/index.cjs",
-      "default": "./dist/plugin/index.cjs"
+      "types": "./plugin/index.d.ts",
+      "require": "./plugin/index.js",
+      "default": "./plugin/index.js"
     },
     "./package.json": "./package.json"
   },
